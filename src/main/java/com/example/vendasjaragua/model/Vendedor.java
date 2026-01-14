@@ -16,6 +16,5 @@ public class Vendedor {
 
     @ManyToOne
     @JoinColumn(name = "time_id")
-    @JsonIgnore
     private Time time;
 }

@@ -3,9 +3,11 @@ package com.example.vendasjaragua.controller;
 import com.example.vendasjaragua.model.Venda;
 import com.example.vendasjaragua.model.Time;
 import com.example.vendasjaragua.model.Vendedor;
+import com.example.vendasjaragua.model.Produto;
 import com.example.vendasjaragua.repository.TimeRepository;
 import com.example.vendasjaragua.repository.VendedorRepository;
 import com.example.vendasjaragua.repository.VendaRepository;
+import com.example.vendasjaragua.repository.ProdutoRepository;
 import com.example.vendasjaragua.service.ExcelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +33,7 @@ public class VendaController {
     private final VendaRepository vendaRepository;
     private final TimeRepository timeRepository;
     private final VendedorRepository vendedorRepository;
+    private final ProdutoRepository produtoRepository;
 
     @PostMapping
     public ResponseEntity<Venda> createVenda(@RequestBody Venda venda) {
@@ -50,6 +53,74 @@ public class VendaController {
     @GetMapping("/vendedores")
     public ResponseEntity<List<Vendedor>> getAllVendedores() {
         return new ResponseEntity<>(vendedorRepository.findAll(), HttpStatus.OK);
+    }
+
+    @PostMapping("/times")
+    public ResponseEntity<Time> createTime(@RequestBody Time time) {
+        try {
+            return new ResponseEntity<>(timeRepository.save(time), HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/times/{id}")
+    public ResponseEntity<HttpStatus> deleteTime(@PathVariable("id") Long id) {
+        try {
+            timeRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("/times/{id}")
+    public ResponseEntity<Time> updateTime(@PathVariable("id") Long id, @RequestBody Time time) {
+        try {
+            return timeRepository.findById(id)
+                .map(existingTime -> {
+                    existingTime.setNome(time.getNome());
+                    existingTime.setLider(time.getLider());
+                    return new ResponseEntity<>(timeRepository.save(existingTime), HttpStatus.OK);
+                })
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/vendedores")
+    public ResponseEntity<Vendedor> createVendedor(@RequestBody Vendedor vendedor) {
+        try {
+            return new ResponseEntity<>(vendedorRepository.save(vendedor), HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("/vendedores/{id}")
+    public ResponseEntity<Vendedor> updateVendedor(@PathVariable("id") Long id, @RequestBody Vendedor vendedor) {
+        try {
+            return vendedorRepository.findById(id)
+                .map(existingVendedor -> {
+                    existingVendedor.setNome(vendedor.getNome());
+                    existingVendedor.setTime(vendedor.getTime());
+                    return new ResponseEntity<>(vendedorRepository.save(existingVendedor), HttpStatus.OK);
+                })
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/vendedores/{id}")
+    public ResponseEntity<HttpStatus> deleteVendedor(@PathVariable("id") Long id) {
+        try {
+            vendedorRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @PostMapping("/upload")
@@ -93,6 +164,54 @@ public class VendaController {
             return new ResponseEntity<>(vendas, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/produtos")
+    public ResponseEntity<List<Produto>> getAllProdutos() {
+        try {
+            List<Produto> produtos = produtoRepository.findAll();
+            if (produtos.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+            return new ResponseEntity<>(produtos, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/produtos")
+    public ResponseEntity<Produto> createProduto(@RequestBody Produto produto) {
+        try {
+            return new ResponseEntity<>(produtoRepository.save(produto), HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("/produtos/{id}")
+    public ResponseEntity<Produto> updateProduto(@PathVariable("id") Long id, @RequestBody Produto produto) {
+        try {
+            return produtoRepository.findById(id)
+                .map(existingProduto -> {
+                    existingProduto.setDescricao(produto.getDescricao());
+                    existingProduto.setGrupo(produto.getGrupo());
+                    existingProduto.setUnidade(produto.getUnidade());
+                    return new ResponseEntity<>(produtoRepository.save(existingProduto), HttpStatus.OK);
+                })
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/produtos/{id}")
+    public ResponseEntity<HttpStatus> deleteProduto(@PathVariable("id") Long id) {
+        try {
+            produtoRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

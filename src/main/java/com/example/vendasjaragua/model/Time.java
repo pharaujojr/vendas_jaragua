@@ -16,5 +16,6 @@ public class Time {
     private String lider;
 
     @OneToMany(mappedBy = "time")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Vendedor> vendedores;
 }

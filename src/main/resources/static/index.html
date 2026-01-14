@@ -226,6 +226,95 @@
         .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;} 
         .modal-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
 
+        /* TABS */
+        .tab-container {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tab-button {
+            background-color: transparent;
+            border: none;
+            color: var(--accent);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tab-button:hover {
+            color: var(--text-light);
+            background-color: rgba(255,255,255,0.05);
+        }
+        .tab-button.active {
+            color: var(--microsoft-blue);
+            border-bottom: 2px solid var(--microsoft-blue);
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* CADASTROS GRID */
+        .cadastros-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 768px) {
+            .cadastros-grid { grid-template-columns: 1fr; }
+        }
+        .cadastro-panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .cadastro-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .cadastro-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .cadastro-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: background 0.2s;
+        }
+        .cadastro-item:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        .btn-delete:hover { opacity: 1; }
+        .simple-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
     </style>
 </head>
 <body>
@@ -235,8 +324,17 @@
             <div style="display: flex; align-items: center; gap: 15px;">
                 <h1>Vendas Jaraguá</h1>
             </div>
-            
-            <div class="filters-group">
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-button active" onclick="switchTab('vendas')">Vendas</button>
+            <button class="tab-button" onclick="switchTab('cadastros')">Cadastros</button>
+            <button class="tab-button" onclick="switchTab('produtos')">Produtos</button>
+        </div>
+
+        <!-- TAB VENDAS -->
+        <div id="tab-vendas" class="tab-content active">
+            <div class="filters-group" style="margin-bottom: 15px;">
                 <label style="color: var(--accent); font-size: 0.9em;">Período:</label>
                 <input type="date" id="filterStartDate" onchange="resetAndLoad()" title="Data Inicial">
                 <span style="color: var(--accent)">até</span>
@@ -251,47 +349,101 @@
                     </button>
                 </div>
             </div>
-        </div>
-        
-        <div id="importContainer">
-            <h4 style="margin-top:0">Importar Dados</h4>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="file" id="fileInput" name="file" accept=".xlsx" style="flex:1" />
-                <button class="btn" onclick="uploadFile()">Enviar Planilha</button>
+            
+            <div id="importContainer">
+                <h4 style="margin-top:0">Importar Dados</h4>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="fileInput" name="file" accept=".xlsx" style="flex:1" />
+                    <button class="btn" onclick="uploadFile()">Enviar Planilha</button>
+                </div>
+                <p id="uploadStatus" style="font-size: 0.9em; color: var(--accent); margin-top: 5px;"></p>
             </div>
-            <p id="uploadStatus" style="font-size: 0.9em; color: var(--accent); margin-top: 5px;"></p>
+    
+            <div class="table-container">
+                <table id="vendasTable">
+                    <thead>
+                        <tr>
+                            <th class="col-wide">Cliente</th>
+                            <th>Telefone</th>
+                            <th>Local</th>
+                            <th>Vendedor</th>
+                            <th>Data</th>
+                            <th>Placas</th>
+                            <th>Inversor</th>
+                            <th>Potência</th>
+                            <th>Venda (R$)</th>
+                            <th>Material (R$)</th>
+                            <th>Lucro Bruto</th>
+                            <th>Markup</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="13" style="text-align:center;">Carregando dados...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+    
+            <div class="pagination-bar">
+                <span id="pageInfo" class="page-info">Página 1 de 1</span>
+                <button class="btn btn-secondary" id="prevBtn" onclick="changePage(-1)" disabled>Anterior</button>
+                <button class="btn btn-secondary" id="nextBtn" onclick="changePage(1)" disabled>Próxima</button>
+            </div>
         </div>
 
-        <div class="table-container">
-            <table id="vendasTable">
-                <thead>
-                    <tr>
-                        <th class="col-wide">Cliente</th>
-                        <th>Telefone</th>
-                        <th>Local</th>
-                        <th>Vendedor</th>
-                        <th>Data</th>
-                        <th>Placas</th>
-                        <th>Inversor</th>
-                        <th>Potência</th>
-                        <th>Venda (R$)</th>
-                        <th>Material (R$)</th>
-                        <th>Lucro Bruto</th>
-                        <th>Markup</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td colspan="13" style="text-align:center;">Carregando dados...</td></tr>
-                </tbody>
-            </table>
+        <!-- TAB CADASTROS -->
+        <div id="tab-cadastros" class="tab-content">
+            <div class="cadastros-grid">
+                <!-- TIMES SECTION -->
+                <div class="cadastro-panel">
+                    <div class="cadastro-header">
+                        <h3 style="margin:0">Times</h3>
+                        <button class="btn" onclick="openTimeModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                    </div>
+                    <ul id="timesList" class="cadastro-list">
+                        <!-- Loaded via JS -->
+                    </ul>
+                </div>
+
+                <!-- VENDEDORES SECTION -->
+                <div class="cadastro-panel">
+                    <div class="cadastro-header">
+                        <h3 style="margin:0">Vendedores</h3>
+                        <button class="btn" onclick="openVendedorModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                    </div>
+                    <ul id="vendedoresList" class="cadastro-list">
+                        <!-- Loaded via JS -->
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <div class="pagination-bar">
-            <span id="pageInfo" class="page-info">Página 1 de 1</span>
-            <button class="btn btn-secondary" id="prevBtn" onclick="changePage(-1)" disabled>Anterior</button>
-            <button class="btn btn-secondary" id="nextBtn" onclick="changePage(1)" disabled>Próxima</button>
+        <!-- TAB PRODUTOS -->
+        <div id="tab-produtos" class="tab-content">
+            <div class="cadastro-panel">
+                <div class="cadastro-header">
+                    <h3 style="margin:0">Lista de Produtos</h3>
+                    <button class="btn" onclick="openProdutoModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo Produto</button>
+                </div>
+                <!-- Use a table for products to show more details -->
+                <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                    <table id="produtosTable" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">Descrição</th>
+                                <th style="text-align: left;">Grupo</th>
+                                <th style="width: 80px;">Unidade</th>
+                                <th style="width: 100px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+
     </div>
 
     <!-- MODAL NOVA VENDA -->
@@ -328,6 +480,106 @@
         </div>
     </div>
 
+    <!-- MODAL TIME -->
+    <div class="modal-overlay" id="timeModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="timeModalTitle" style="margin:0; font-weight: 300;">Novo Time</h3>
+                <button class="modal-close" onclick="closeTimeModal()">&times;</button>
+            </div>
+            <input type="hidden" id="timeId">
+            <div class="form-group">
+                <label>Nome do Time</label>
+                <input type="text" id="timeNameInput">
+            </div>
+            <div class="form-group">
+                <label>Líder / Responsável</label>
+                <input type="text" id="timeLiderInput">
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeTimeModal()">Cancelar</button>
+                <button class="btn" onclick="saveTimeForm()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VIEW TIME -->
+    <div class="modal-overlay" id="timeViewModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 style="margin:0; font-weight: 300;">Detalhes do Time</h3>
+                <button class="modal-close" onclick="closeTimeViewModal()">&times;</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h2 id="viewTimeName" style="margin: 0 0 5px 0; color: var(--microsoft-blue);"></h2>
+                <p style="margin:0; color: var(--accent);">Responsável: <strong id="viewTimeLider" style="color: var(--text-light);"></strong></p>
+            </div>
+            
+            <h4 style="border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px;">Membros</h4>
+            <ul id="viewTimeMembersList" class="cadastro-list" style="max-height: 300px; overflow-y: auto;">
+                <!-- Populated via JS -->
+            </ul>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeTimeViewModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VENDEDOR -->
+    <div class="modal-overlay" id="vendedorModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="vendedorModalTitle" style="margin:0; font-weight: 300;">Novo Vendedor</h3>
+                <button class="modal-close" onclick="closeVendedorModal()">&times;</button>
+            </div>
+            <input type="hidden" id="vendedorId">
+            <div class="form-group">
+                <label>Nome do Vendedor</label>
+                <input type="text" id="vendedorNameInput">
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                <select id="vendedorTimeSelectInput">
+                    <option value="">Sem Time</option>
+                </select>
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeVendedorModal()">Cancelar</button>
+                <button class="btn" onclick="saveVendedorForm()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRODUTO -->
+    <div class="modal-overlay" id="produtoModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="produtoModalTitle" style="margin:0; font-weight: 300;">Novo Produto</h3>
+                <button class="modal-close" onclick="closeProdutoModal()">&times;</button>
+            </div>
+            <input type="hidden" id="produtoId">
+            <div class="form-group">
+                <label>Descrição</label>
+                <input type="text" id="produtoDescricao">
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Grupo</label>
+                    <input type="text" id="produtoGrupo">
+                </div>
+                <div class="form-group">
+                    <label>Unidade</label>
+                    <input type="text" id="produtoUnidade" maxlength="5" placeholder="Ex: UN">
+                </div>
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeProdutoModal()">Cancelar</button>
+                <button class="btn" onclick="saveProdutoForm()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentPage = 0;
         const pageSize = 50;
@@ -335,13 +587,35 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadVendas(); // Load initial data
-            loadAuxData(); // Load 'Vendedores' and 'Times' for dropdowns
-            
+            loadAuxData(); // Load 'Vendedores' and 'Times' for dropdowns and lists
+            loadProdutos(); // NEW: Load Products
+
             // Modal outside click close
-            document.getElementById('vendaModal').addEventListener('click', (e) => {
-                if (e.target === document.getElementById('vendaModal')) closeModal();
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        closeModal();
+                        closeTimeModal();
+                        closeTimeViewModal();
+                        closeVendedorModal();
+                        closeProdutoModal(); // NEW
+                    }
+                });
             });
         });
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabName).classList.add('active');
+            // Find user friendly way to highlight button. Assuming order.
+            const buttons = document.querySelectorAll('.tab-button');
+            if (tabName === 'vendas') buttons[0].classList.add('active');
+            if (tabName === 'cadastros') buttons[1].classList.add('active');
+            if (tabName === 'produtos') buttons[2].classList.add('active'); // NEW
+        }
 
         // Toggle Import Section
         function toggleImport() {
@@ -388,38 +662,216 @@
 
         function formatMarkup(val) {
              if (val === null || val === undefined) return '';
-             // Ensure it's treated as a number
              let num = Number(val);
              if (isNaN(num)) return val;
              return (num * 100).toFixed(2) + '%'; 
-             // Note: If markup comes as 0.20 for 20%, we usually multiply. 
-             // If it comes as 20 already, we leave it. Assuming 0.XX from standard calculation logic.
         }
 
-        // --- API CALLS ---
+        let _CACHE_TIMES = [];
+        let _CACHE_VENDEDORES = [];
 
         async function loadAuxData() {
             try {
-                Promise.all([
+                const [vendedores, times] = await Promise.all([
                     fetch('/api/vendas/vendedores').then(r => r.json()),
                     fetch('/api/vendas/times').then(r => r.json())
-                ]).then(([vendedores, times]) => {
-                    const vSel = document.getElementById('vendedorSelect');
-                    const tSel = document.getElementById('timeSelect');
-                    vendedores.forEach(v => {
-                        const opt = document.createElement('option');
-                        opt.value = v.nome;
-                        opt.innerText = v.nome;
-                        vSel.appendChild(opt);
-                    });
-                    times.forEach(t => {
-                        const opt = document.createElement('option');
-                        opt.value = t.nome;
-                        opt.innerText = t.nome;
-                        tSel.appendChild(opt);
-                    });
+                ]);
+
+                _CACHE_TIMES = times;
+                _CACHE_VENDEDORES = vendedores;
+
+                const vSel = document.getElementById('vendedorSelect');
+                const tSel = document.getElementById('timeSelect');
+                const vTimeSel = document.getElementById('vendedorTimeSelectInput');
+                const vList = document.getElementById('vendedoresList');
+                const tList = document.getElementById('timesList');
+
+                vSel.innerHTML = '<option value="">Selecione...</option>';
+                tSel.innerHTML = '<option value="">Selecione...</option>';
+                vTimeSel.innerHTML = '<option value="">Sem Time</option>';
+                vList.innerHTML = '';
+                tList.innerHTML = '';
+
+                times.forEach(t => {
+                    // Dropdown
+                    const opt = document.createElement('option');
+                    opt.value = t.nome;
+                    opt.innerText = t.nome;
+                    tSel.appendChild(opt);
+
+                    // Vendedor Modal Dropdown
+                    const optV = document.createElement('option');
+                    optV.value = t.id;
+                    optV.innerText = t.nome;
+                    vTimeSel.appendChild(optV);
+
+                    // List
+                    const li = document.createElement('li');
+                    li.className = 'cadastro-item';
+                    const safeName = t.nome.replace(/'/g, "\\'");
+                    const safeLider = (t.lider || '').replace(/'/g, "\\'");
+                    li.innerHTML = `
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-weight:600;">${t.nome}</span>
+                            <span style="font-size:0.8em; color:var(--accent);">Líder: ${t.lider || '-'}</span>
+                        </div>
+                        <div style="display:flex; align-items:center;">
+                            <button class="btn btn-secondary" onclick="openTimeViewModal(${t.id})" style="padding: 2px 8px; margin-right: 5px; font-size:12px;" title="Ver detalhes">👁</button>
+                            <button class="btn btn-secondary" onclick="openTimeModal(${t.id}, '${safeName}', '${safeLider}')" style="padding: 2px 8px; margin-right: 5px; font-size:12px;">✎</button>
+                            <button class="btn-delete" onclick="deleteTime(${t.id})">&times;</button>
+                        </div>
+                    `;
+                    tList.appendChild(li);
+                });
+
+                vendedores.forEach(v => {
+                    // Dropdown
+                    const opt = document.createElement('option');
+                    opt.value = v.nome;
+                    opt.innerText = v.nome;
+                    vSel.appendChild(opt);
+                    
+                    // List
+                    const li = document.createElement('li');
+                    li.className = 'cadastro-item';
+                    const safeName = v.nome.replace(/'/g, "\\'");
+                    const timeId = (v.time && v.time.id) ? v.time.id : '';
+                    li.innerHTML = `
+                        <span>${v.nome} <small style="color:var(--accent); margin-left:5px;">(${v.time ? v.time.nome : '-'})</small></span> 
+                        <div>
+                            <button class="btn btn-secondary" onclick="openVendedorModal(${v.id}, '${safeName}', '${timeId}')" style="padding: 2px 8px; margin-right: 5px; font-size:12px;">✎</button>
+                            <button class="btn-delete" onclick="deleteVendedor(${v.id})">&times;</button>
+                        </div>
+                    `;
+                    vList.appendChild(li);
                 });
             } catch(e) { console.error("Erro ao carregar auxiliares", e); }
+        }
+
+        // --- CRUD Times ---
+        function openTimeModal(id = null, name = '', lider = '') {
+            document.getElementById('timeId').value = id || '';
+            document.getElementById('timeNameInput').value = name;
+            document.getElementById('timeLiderInput').value = lider;
+            document.getElementById('timeModalTitle').innerText = id ? 'Editar Time' : 'Novo Time';
+            document.getElementById('timeModal').classList.add('modal-active');
+        }
+
+        function closeTimeModal() {
+            document.getElementById('timeModal').classList.remove('modal-active');
+        }
+
+        async function saveTimeForm() {
+            const id = document.getElementById('timeId').value;
+            const name = document.getElementById('timeNameInput').value;
+            const lider = document.getElementById('timeLiderInput').value;
+            if(!name) return;
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/vendas/times/${id}` : '/api/vendas/times';
+
+            try {
+                const resp = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ nome: name, lider: lider })
+                });
+                if(resp.ok) {
+                    closeTimeModal();
+                    loadAuxData();
+                } else {
+                    alert('Erro ao salvar time.');
+                }
+            } catch(e) { alert('Erro: ' + e); }
+        }
+
+        // --- View & Details ---
+        function openTimeViewModal(timeId) {
+            const time = _CACHE_TIMES.find(t => t.id === timeId);
+            if(!time) return;
+
+            document.getElementById('viewTimeName').innerText = time.nome;
+            document.getElementById('viewTimeLider').innerText = time.lider || 'Não definido';
+            
+            const members = _CACHE_VENDEDORES.filter(v => v.time && v.time.id === timeId);
+            const listEl = document.getElementById('viewTimeMembersList');
+            listEl.innerHTML = ''; // clear
+
+            if(members.length === 0) {
+                listEl.innerHTML = '<li style="padding:10px; color:#aaa; font-style:italic;">Nenhum membro cadastrado neste time.</li>';
+            } else {
+                members.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'cadastro-item';
+                    li.innerText = m.nome;
+                    listEl.appendChild(li);
+                });
+            }
+
+            document.getElementById('timeViewModal').classList.add('modal-active');
+        }
+
+        function closeTimeViewModal() {
+            document.getElementById('timeViewModal').classList.remove('modal-active');
+        }
+
+        async function deleteTime(id) {
+            if(!confirm('Deseja excluir este time?')) return;
+            try {
+                await fetch(`/api/vendas/times/${id}`, { method: 'DELETE' });
+                loadAuxData();
+            } catch(e) { alert('Erro ao excluir time'); }
+        }
+
+        // --- CRUD Vendedores ---
+        function openVendedorModal(id = null, name = '', timeId = '') {
+            document.getElementById('vendedorId').value = id || '';
+            document.getElementById('vendedorNameInput').value = name;
+            document.getElementById('vendedorTimeSelectInput').value = timeId;
+            document.getElementById('vendedorModalTitle').innerText = id ? 'Editar Vendedor' : 'Novo Vendedor';
+            document.getElementById('vendedorModal').classList.add('modal-active');
+        }
+
+        function closeVendedorModal() {
+            document.getElementById('vendedorModal').classList.remove('modal-active');
+        }
+
+        async function saveVendedorForm() {
+            const id = document.getElementById('vendedorId').value;
+            const name = document.getElementById('vendedorNameInput').value;
+            const timeId = document.getElementById('vendedorTimeSelectInput').value;
+            
+            if(!name) return;
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/vendas/vendedores/${id}` : '/api/vendas/vendedores';
+            
+            const payload = {
+                nome: name,
+                time: timeId ? { id: timeId } : null
+            };
+
+            try {
+                const resp = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if(resp.ok) {
+                    closeVendedorModal();
+                    loadAuxData();
+                } else {
+                    alert('Erro ao salvar vendedor.');
+                }
+            } catch(e) { alert('Erro: ' + e); }
+        }
+
+        async function deleteVendedor(id) {
+            if(!confirm('Deseja excluir este vendedor?')) return;
+            try {
+                await fetch(`/api/vendas/vendedores/${id}`, { method: 'DELETE' });
+                loadAuxData();
+            } catch(e) { alert('Erro ao excluir vendedor'); }
         }
 
         async function loadVendas() {
@@ -573,6 +1025,96 @@
             } catch (error) {
                 status.innerText = "Erro no upload: " + error;
             }
+        }
+
+        // --- CRUD Produtos ---
+        async function loadProdutos() {
+            try {
+                const response = await fetch('/api/vendas/produtos');
+                if(!response.ok) return; // NoContent or Error
+                const text = await response.text();
+                if(!text) return; // No content
+                
+                const produtos = JSON.parse(text);
+                const tbody = document.querySelector('#produtosTable tbody');
+                tbody.innerHTML = '';
+
+                if(produtos.length === 0) {
+                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
+                     return;
+                }
+
+                produtos.forEach(p => {
+                    const tr = document.createElement('tr');
+                    const safeDesc = p.descricao ? p.descricao.replace(/'/g, "\\'") : '';
+                    const safeGrupo = p.grupo ? p.grupo.replace(/'/g, "\\'") : '';
+                    const safeUnidade = p.unidade ? p.unidade.replace(/'/g, "\\'") : '';
+                    
+                    tr.innerHTML = `
+                        <td>${p.descricao || ''}</td>
+                        <td>${p.grupo || ''}</td>
+                        <td>${p.unidade || ''}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="openProdutoModal(${p.id}, '${safeDesc}', '${safeGrupo}', '${safeUnidade}')" style="padding: 2px 8px; margin-right: 5px; font-size:12px;">✎</button>
+                            <button class="btn-delete" onclick="deleteProduto(${p.id})">&times;</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { console.error("Erro ao carregar produtos", e); }
+        }
+
+        function openProdutoModal(id = null, descricao = '', grupo = '', unidade = '') {
+            document.getElementById('produtoId').value = id || '';
+            document.getElementById('produtoDescricao').value = descricao;
+            document.getElementById('produtoGrupo').value = grupo;
+            document.getElementById('produtoUnidade').value = unidade;
+            document.getElementById('produtoModalTitle').innerText = id ? 'Editar Produto' : 'Novo Produto';
+            document.getElementById('produtoModal').classList.add('modal-active');
+        }
+
+        function closeProdutoModal() {
+            document.getElementById('produtoModal').classList.remove('modal-active');
+        }
+
+        async function saveProdutoForm() {
+            const id = document.getElementById('produtoId').value;
+            const descricao = document.getElementById('produtoDescricao').value;
+            const grupo = document.getElementById('produtoGrupo').value;
+            const unidade = document.getElementById('produtoUnidade').value;
+
+            if(!descricao) { alert('Descrição é obrigatória'); return; }
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/vendas/produtos/${id}` : '/api/vendas/produtos';
+            
+            const payload = {
+                descricao: descricao,
+                grupo: grupo,
+                unidade: unidade
+            };
+
+            try {
+                const resp = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if(resp.ok) {
+                    closeProdutoModal();
+                    loadProdutos();
+                } else {
+                    alert('Erro ao salvar produto.');
+                }
+            } catch(e) { alert('Erro: ' + e); }
+        }
+
+        async function deleteProduto(id) {
+            if(!confirm('Deseja excluir este produto?')) return;
+            try {
+                await fetch(`/api/vendas/produtos/${id}`, { method: 'DELETE' });
+                loadProdutos();
+            } catch(e) { alert('Erro ao excluir produto'); }
         }
     </script>
 </body>
