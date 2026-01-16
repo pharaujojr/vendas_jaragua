@@ -44,6 +44,10 @@ public class Venda {
     @Column(columnDefinition = "jsonb")
     private List<VendaItem> produto; // Kept name 'produto' as requested, but now it is a List
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "inverter_info", columnDefinition = "jsonb")
+    private List<InverterItem> inverterInfo = new ArrayList<>();
+
     private String time;
 
     @PrePersist

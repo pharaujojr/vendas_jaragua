@@ -17,12 +17,22 @@ import java.util.List;
 
 import java.util.Collections;
 import com.example.vendasjaragua.model.VendaItem;
+import com.example.vendasjaragua.model.Produto;
+import com.example.vendasjaragua.model.Time;
+import com.example.vendasjaragua.model.Vendedor;
+import com.example.vendasjaragua.repository.ProdutoRepository;
+import com.example.vendasjaragua.repository.TimeRepository;
+import com.example.vendasjaragua.repository.VendedorRepository;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ExcelService {
 
     private final VendaRepository vendaRepository;
+    private final ProdutoRepository produtoRepository;
+    private final TimeRepository timeRepository;
+    private final VendedorRepository vendedorRepository;
 
     public void save(MultipartFile file) {
         try {
@@ -91,6 +101,8 @@ public class ExcelService {
                     venda.setProduto(new ArrayList<>());
                 }
                 
+                venda.setInverterInfo(new ArrayList<>()); // Initialize with empty list as requested
+
                 venda.setTime(getStringValue(row.getCell(17)));
 
                 vendas.add(venda);
@@ -100,6 +112,136 @@ public class ExcelService {
             return vendas;
         } catch (IOException e) {
             throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
+        }
+    }
+
+    public void saveProdutos(MultipartFile file) {
+        try {
+            List<Produto> produtos = parseProdutoExcelFile(file.getInputStream());
+            produtoRepository.saveAll(produtos);
+        } catch (IOException e) {
+            throw new RuntimeException("fail to store excel data: " + e.getMessage());
+        }
+    }
+
+    public void saveTimes(MultipartFile file) {
+        try {
+            List<Time> times = parseTimeExcelFile(file.getInputStream());
+            timeRepository.saveAll(times);
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    public void saveVendedores(MultipartFile file) {
+        try {
+            List<Vendedor> vendedores = parseVendedorExcelFile(file.getInputStream());
+            vendedorRepository.saveAll(vendedores);
+        } catch (IOException e) {
+            throw new RuntimeException("fail to store excel data: " + e.getMessage());
+        }
+    }
+
+    public List<Produto> parseProdutoExcelFile(InputStream is) {
+         try {
+            Workbook workbook = new XSSFWorkbook(is);
+            Sheet sheet = workbook.getSheetAt(0);
+            List<Produto> produtos = new ArrayList<>();
+            
+            int rowIndex = 0;
+            for (Row row : sheet) {
+                if (rowIndex == 0) { // Skip header
+                    rowIndex++;
+                    continue;
+                }
+                if (isRowEmpty(row)) {
+                     rowIndex++;
+                     continue;
+                }
+                
+                // DESCRIÇÃO|GRUPO|UNIDADE -> 0, 1, 2
+                Produto p = new Produto();
+                p.setDescricao(getStringValue(row.getCell(0)));
+                p.setGrupo(getStringValue(row.getCell(1)));
+                p.setUnidade(getStringValue(row.getCell(2)));
+                
+                produtos.add(p);
+                rowIndex++;
+            }
+            workbook.close();
+            return produtos;
+        } catch (IOException e) {
+            throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
+        }
+    }
+
+    public List<Time> parseTimeExcelFile(InputStream is) {
+        try {
+            Workbook workbook = new XSSFWorkbook(is);
+            Sheet sheet = workbook.getSheetAt(0);
+            List<Time> times = new ArrayList<>();
+            
+            int rowIndex = 0;
+            for (Row row : sheet) {
+                if (rowIndex == 0) { rowIndex++; continue; } // Skip Header
+                if (isRowEmpty(row)) { rowIndex++; continue; }
+
+                String nome = getStringValue(row.getCell(0));
+                String lider = getStringValue(row.getCell(1));
+
+                if (lider == null || lider.trim().isEmpty()) {
+                    throw new IOException("Linha " + (rowIndex + 1) + ": Time '" + nome + "' não possui líder informado. Importação cancelada.");
+                }
+
+                // Check if exists
+                Time time = timeRepository.findByNome(nome).stream().findFirst().orElse(new Time());
+                time.setNome(nome);
+                time.setLider(lider);
+                
+                times.add(time);
+                rowIndex++;
+            }
+            workbook.close();
+            return times;
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    public List<Vendedor> parseVendedorExcelFile(InputStream is) {
+        try {
+            Workbook workbook = new XSSFWorkbook(is);
+            Sheet sheet = workbook.getSheetAt(0);
+            List<Vendedor> vendedores = new ArrayList<>();
+            
+            // Allow duplicate logic: we want to update existing by name or create new?
+            // "importar" usually implies create if not exists
+            
+            int rowIndex = 0;
+            for (Row row : sheet) {
+                if (rowIndex == 0) { rowIndex++; continue; }
+                if (isRowEmpty(row)) { rowIndex++; continue; }
+
+                String nome = getStringValue(row.getCell(0));
+                String nomeTime = getStringValue(row.getCell(1));
+
+                Vendedor vendedor = vendedorRepository.findByNome(nome).stream().findFirst().orElse(new Vendedor());
+                vendedor.setNome(nome);
+
+                if (nomeTime != null && !nomeTime.trim().isEmpty()) {
+                    Time time = timeRepository.findByNome(nomeTime).stream().findFirst().orElse(null);
+                    vendedor.setTime(time);
+                } else {
+                    vendedor.setTime(null);
+                }
+                
+                vendedores.add(vendedor);
+                rowIndex++;
+            }
+            workbook.close();
+            return vendedores;
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 

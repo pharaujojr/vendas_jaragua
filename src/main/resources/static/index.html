@@ -124,7 +124,19 @@
             color: #fff;
             font-family: inherit;
         }
+
+        /* Dropdown Specifics */
+        select {
+             background-color: #1b263b; /* Solid Dark Blue */
+             color: #fff;
+        }
+        select option {
+            background-color: #1b263b;
+            color: #fff;
+        }
+
         input[type="date"] {
+
             color-scheme: dark;
         }
 
@@ -321,6 +333,62 @@
             margin-bottom: 15px;
         }
 
+        .multiselect {
+            position: relative;
+            width: 100%;
+        }
+        .multiselect-head {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #fff;
+            min-height: 32px;
+        }
+        .multiselect-head:hover { background: rgba(255,255,255,0.1); }
+        .multiselect-head:after {
+            content: '▼';
+            font-size: 0.7em;
+            margin-left: 8px;
+            color: var(--accent);
+        }
+        .multiselect-body {
+            display: none;
+            position: absolute;
+            top: 100%; left: 0; width: 100%;
+            background: #1b263b;
+            border: 1px solid var(--border-color);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 4px;
+            margin-top: 2px;
+        }
+        .multiselect-body.show {
+            display: block;
+        }
+        .multiselect-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            cursor: pointer;
+            color: #e0e1dd;
+            border-radius: 3px;
+        }
+        .multiselect-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .multiselect-item input {
+            margin-right: 8px;
+            width: auto;
+        }
     </style>
 </head>
 <body>
@@ -328,14 +396,14 @@
     <div class="container">
         <div class="top-bar">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <h1 style="margin: 0;">Vendas Jaraguá</h1>
+                <h1 style="margin: 0;">Controle de Vendas</h1>
             </div>
             <img src="solturi.svg" alt="Solturi" style="height: 50px;">
         </div>
 
         <div class="tab-container">
             <button class="tab-button active" onclick="switchTab('vendas')">Vendas</button>
-            <button class="tab-button" onclick="switchTab('cadastros')">Cadastros</button>
+            <button class="tab-button" onclick="switchTab('cadastros')">Representantes</button>
             <button class="tab-button" onclick="switchTab('produtos')">Produtos</button>
             <button class="tab-button" onclick="switchTab('dashboards')">Dashboards</button>
         </div>
@@ -348,6 +416,8 @@
                 <span style="color: var(--accent)">até</span>
                 <input type="date" id="filterEndDate" onchange="resetAndLoad()" title="Data Final">
                 
+                <input type="text" id="tableFilter" onkeyup="filterTable()" placeholder="🔍 Filtrar nesta página..." style="margin-left: 15px; padding: 6px; width: 200px; border: 1px solid var(--border-color); border-radius: 4px; background-color: rgba(0,0,0,0.2); color: #fff;">
+
                 <div class="actions-group" style="margin-left: 15px;">
                      <button class="btn btn-secondary" onclick="toggleImport()">
                         📂 Importar
@@ -377,8 +447,8 @@
                             <th>Vendedor</th>
                             <th>Data</th>
                             <th>Placas</th>
+                            <th>Potência (kWp)</th>
                             <th>Inversor</th>
-                            <th>Potência</th>
                             <th>Venda (R$)</th>
                             <th>Material (R$)</th>
                             <th>Lucro Bruto</th>
@@ -406,8 +476,12 @@
                 <div class="cadastro-panel">
                     <div class="cadastro-header">
                         <h3 style="margin:0">Times</h3>
-                        <button class="btn" onclick="openTimeModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                        <div>
+                            <button class="btn" onclick="openImportTimesModal()" style="padding: 5px 10px; font-size: 12px; margin-right: 5px; background-color: #28a745;">⇪ Importar</button>
+                            <button class="btn" onclick="openTimeModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                        </div>
                     </div>
+                    <input type="text" id="timesFilter" onkeyup="filterList('timesList', 'timesFilter')" placeholder="🔍 Filtrar times..." style="width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background-color: rgba(0,0,0,0.2); color: #fff;">
                     <ul id="timesList" class="cadastro-list">
                         <!-- Loaded via JS -->
                     </ul>
@@ -417,8 +491,12 @@
                 <div class="cadastro-panel">
                     <div class="cadastro-header">
                         <h3 style="margin:0">Vendedores</h3>
-                        <button class="btn" onclick="openVendedorModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                        <div>
+                            <button class="btn" onclick="openImportVendedoresModal()" style="padding: 5px 10px; font-size: 12px; margin-right: 5px; background-color: #28a745;">⇪ Importar</button>
+                            <button class="btn" onclick="openVendedorModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo</button>
+                        </div>
                     </div>
+                    <input type="text" id="vendedoresFilter" onkeyup="filterList('vendedoresList', 'vendedoresFilter')" placeholder="🔍 Filtrar vendedores..." style="width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background-color: rgba(0,0,0,0.2); color: #fff;">
                     <ul id="vendedoresList" class="cadastro-list">
                         <!-- Loaded via JS -->
                     </ul>
@@ -431,8 +509,14 @@
             <div class="cadastro-panel">
                 <div class="cadastro-header">
                     <h3 style="margin:0">Lista de Produtos</h3>
-                    <button class="btn" onclick="openProdutoModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo Produto</button>
+                    <div>
+                        <button class="btn" onclick="openImportProdutosModal()" style="padding: 5px 10px; font-size: 12px; margin-right: 5px; background-color: #28a745;">⇪ Importar Excel</button>
+                        <button class="btn" onclick="openProdutoModal()" style="padding: 5px 10px; font-size: 12px;">+ Novo Produto</button>
+                    </div>
                 </div>
+                <!-- Filter for Products -->
+                <input type="text" id="produtosFilter" onkeyup="filterTableGeneric('produtosTable', 'produtosFilter')" placeholder="🔍 Filtrar produtos..." style="width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background-color: rgba(0,0,0,0.2); color: #fff;">
+                
                 <!-- Use a table for products to show more details -->
                 <div class="table-container" style="max-height: 500px; overflow-y: auto;">
                     <table id="produtosTable" style="width:100%">
@@ -475,14 +559,44 @@
 
             <div class="cadastros-grid">
                 <div class="cadastro-panel">
-                    <h3 style="margin:0 0 15px 0;">Evolução Mensal de Vendas</h3>
+                    <div class="cadastro-header">
+                        <h3 style="margin:0">Evolução Mensal de Vendas</h3>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-color); padding: 10px; margin-bottom: 10px; border-radius: 4px;">
+                        <small style="color: var(--accent); display:block; margin-bottom:5px;">FILTROS AVANÇADOS</small>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="font-size: 0.8em; color: var(--accent);">Times</label>
+                                <div class="multiselect" id="msTimes">
+                                    <div class="multiselect-head" onclick="toggleMs('msTimesBody')">Selecionar Times...</div>
+                                    <div class="multiselect-body" id="msTimesBody"></div>
+                                </div>
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="font-size: 0.8em; color: var(--accent);">Vendedores</label>
+                                <div class="multiselect" id="msVens">
+                                    <div class="multiselect-head" onclick="toggleMs('msVensBody')">Todos</div>
+                                    <div class="multiselect-body" id="msVensBody"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="height: 300px; position: relative;">
                         <canvas id="chartMensal"></canvas>
                     </div>
                 </div>
-                <div class="cadastro-panel">
-                    <h3 style="margin:0 0 15px 0;">Top Vendedores</h3>
-                    <div style="height: 300px; position: relative;">
+                <div class="cadastro-panel" style="display: flex; flex-direction: column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="margin:0;">Top Vendedores</h3>
+                        <div id="vendedoresPagination" style="display:none; gap:10px; align-items: center;">
+                            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8em;" onclick="prevPageVendedores()">&lt;</button>
+                            <span id="vendedoresPageInfo" style="font-size:0.8em; color:var(--accent);"></span>
+                            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8em;" onclick="nextPageVendedores()">&gt;</button>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-height: 600px; position: relative;">
                         <canvas id="chartVendedores"></canvas>
                     </div>
                 </div>
@@ -497,9 +611,15 @@
                     </div>
                 </div>
                 <div class="cadastro-panel">
-                    <h3 style="margin:0 0 15px 0;">Evolução Mensal por Time</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                        <h3 style="margin:0;">Vendas do Time:</h3>
+                        <select id="dashTimeFilter" style="max-width: 200px;" onchange="loadDashboardTimeSpecific()">
+                            <option value="">Selecione um Time...</option>
+                        </select>
+                    </div>
                     <div style="height: 300px; position: relative;">
-                        <canvas id="chartTimesLine"></canvas>
+                         <!-- Reuse ID for new Pie Chart specific to Time -->
+                        <canvas id="chartTimeSpecificPie"></canvas>
                     </div>
                 </div>
             </div>
@@ -520,13 +640,26 @@
             <div class="form-grid">
                 <div class="form-group"><label>Cliente</label><input type="text" id="cliente"></div>
                 <div class="form-group"><label>Telefone</label><input type="text" id="telefone"></div>
-                <div class="form-group"><label>Cidade</label><input type="text" id="cidade"></div>
-                <div class="form-group"><label>Estado</label><input type="text" id="estado" maxlength="2" style="text-transform: uppercase;"></div>
-                <div class="form-group"><label>Vendedor</label><select id="vendedorSelect"><option value="">Selecione...</option></select></div>
+                <div class="form-group">
+                    <label>Estado (UF)</label>
+                    <select id="estado" onchange="loadCidades(this.value)">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" id="cidade" list="cidadeDataList" placeholder="Selecione ou digite..." autocomplete="off">
+                    <datalist id="cidadeDataList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Vendedor</label>
+                    <input type="text" id="vendedorSelect" list="vendedorDataList" placeholder="Digite para buscar..." autocomplete="off">
+                    <datalist id="vendedorDataList"></datalist>
+                </div>
                 <div class="form-group"><label>Time</label><input type="text" id="timeSelect" readonly style="background: rgba(255,255,255,0.05); cursor: default; border: 1px solid var(--border-color);"></div>
                 <div class="form-group"><label>Data</label><input type="date" id="data"></div>
                 <div class="form-group"><label>Placas</label><input type="text" id="placas"></div>
-                <div class="form-group"><label>Inversor</label><input type="text" id="inversor"></div>
+                <!-- REMOVED OLD INVERSOR FIELD -->
                 <div class="form-group"><label>Potência</label><input type="text" id="potencia"></div>
                 <div class="form-group"><label>Valor Venda (Total)</label><input type="number" step="0.01" id="valorVenda" readonly style="background-color: transparent; border-color: transparent; color: white; font-weight: bold;"></div>
                 <div class="form-group"><label>Valor Material (Total)</label><input type="number" step="0.01" id="valorMaterial" readonly style="background-color: transparent; border-color: transparent; color: white; font-weight: bold;"></div>
@@ -534,10 +667,50 @@
                 <div class="form-group"><label>OV</label><input type="text" id="ov"></div>
             </div>
 
+            <!-- INVERTERS SECTION -->
+            <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <h4 style="margin: 0 0 10px 0;">Inversores</h4>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 80px auto; gap: 10px; align-items: end; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 4px;">
+                    <div class="form-group" style="margin:0;">
+                         <label style="font-size:0.8em">Fabricante</label>
+                         <select id="invFabricante" style="width:100%"><option value="WEG" selected>WEG</option></select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                         <label style="font-size:0.8em">Potência (kW)</label>
+                         <input type="text" id="invPotencia" style="padding: 5px;" placeholder="Ex: 5,0">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                         <label style="font-size:0.8em">Qtd</label>
+                         <input type="number" id="invQtd" value="1" min="1" style="padding: 5px;">
+                    </div>
+                    <button class="btn" onclick="addInverterToCart()" style="height: 36px; margin-bottom: 2px; white-space: nowrap;">Adicionar</button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table id="inverterTable" style="width:100%; margin-top: 10px; border-collapse: collapse; min-width: 400px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.85em; text-align: left;">
+                                <th style="padding: 8px;">Fabricante</th>
+                                <th style="padding: 8px;">Potência (kW)</th>
+                                <th style="width:60px; padding: 8px;">Qtd</th>
+                                <th style="width:40px; padding: 8px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 0.85em;">
+                            <!-- Items go here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ITEMS SECTION -->
             <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                 <h4 style="margin: 0 0 10px 0;">Itens da Venda</h4>
-                <div style="display: grid; grid-template-columns: 2fr 80px 120px 120px auto; gap: 10px; align-items: end; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 2fr 80px 100px 100px auto; gap: 10px; align-items: end; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 4px;">
+                    <div class="form-group" style="margin:0;">
+                         <label style="font-size:0.8em">Grupo</label>
+                         <select id="itemGrupoSelect" style="width:100%" onchange="filterProdutosByGrupo()"><option value="">Todos</option></select>
+                    </div>
                     <div class="form-group" style="margin:0;">
                          <label style="font-size:0.8em">Produto</label>
                          <select id="itemProdutoSelect" style="width:100%"><option value="">Selecione...</option></select>
@@ -656,6 +829,125 @@
         </div>
     </div>
 
+    <!-- Import Produtos Modal -->
+    <div class="modal-overlay" id="importProdutosModalOverlay">
+        <!-- ... existing content ... -->
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 style="margin:0; font-weight: 300;">Importar Produtos</h3>
+                <span class="modal-close" onclick="closeImportProdutosModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9em; margin-bottom: 15px;">
+                    Selecione um arquivo Excel (.xlsx) contendo os produtos.
+                    <br>A primeira linha (cabeçalho) será ignorada.
+                </p>
+                
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center; border: 1px solid var(--border-color);">
+                    <p style="margin: 0 0 10px 0; font-size: 0.8em; color: var(--accent); text-transform: uppercase; font-weight: bold;">Formato do Cabeçalho (Obrigatório)</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; font-size: 0.8em;">
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-weight: bold;">DESCRIÇÃO</div>
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-weight: bold;">GRUPO</div>
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-bottom: 1px solid var(--border-color); font-weight: bold;">UNIDADE</div>
+                        
+                        <div style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.1); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Cabo Solar 6mm</div>
+                        <div style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.1); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Cabos</div>
+                        <div style="padding: 6px;">m</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="importProdutosFile" style="cursor: pointer; display: block; background: rgba(255,255,255,0.05); padding: 20px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; transition: all 0.2s;">
+                        <span id="fileNameDisplay">Clique para selecionar o arquivo .xlsx</span>
+                    </label>
+                    <input type="file" id="importProdutosFile" accept=".xlsx" style="display: none;" onchange="updateFileNameDisplay(this, 'fileNameDisplay')">
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <span id="importProdutosStatus" style="font-size: 0.9em; margin-right: 15px; display: inline-block;"></span>
+                    <button class="btn btn-secondary" onclick="closeImportProdutosModal()">Cancelar</button>
+                    <button class="btn" onclick="uploadProdutosFile()" style="background-color: #28a745; margin-left: 10px;">Importar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Times Modal -->
+    <div class="modal-overlay" id="importTimesModalOverlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 style="margin:0; font-weight: 300;">Importar Times</h3>
+                <span class="modal-close" onclick="closeImportTimesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9em; margin-bottom: 15px;">
+                    Selecione um arquivo Excel (.xlsx).
+                    <br>Primeira linha ignorada. <b>Líder é obrigatório.</b>
+                </p>
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center; border: 1px solid var(--border-color);">
+                    <p style="margin: 0 0 10px 0; font-size: 0.8em; color: var(--accent); text-transform: uppercase; font-weight: bold;">Formato do Cabeçalho</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; font-size: 0.8em;">
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-weight: bold;">NOME</div>
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-bottom: 1px solid var(--border-color); font-weight: bold;">LÍDER</div>
+                        <div style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.1);">Time Alpha</div>
+                        <div style="padding: 6px;">João Silva</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="importTimesFile" style="cursor: pointer; display: block; background: rgba(255,255,255,0.05); padding: 20px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; transition: all 0.2s;">
+                        <span id="fileNameDisplayTimes">Clique para selecionar o arquivo .xlsx</span>
+                    </label>
+                    <input type="file" id="importTimesFile" accept=".xlsx" style="display: none;" onchange="updateFileNameDisplay(this, 'fileNameDisplayTimes')">
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <span id="importTimesStatus" style="font-size: 0.9em; margin-right: 15px; display: inline-block;"></span>
+                    <button class="btn btn-secondary" onclick="closeImportTimesModal()">Cancelar</button>
+                    <button class="btn" onclick="uploadTimesFile()" style="background-color: #28a745; margin-left: 10px;">Importar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Vendedores Modal -->
+    <div class="modal-overlay" id="importVendedoresModalOverlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 style="margin:0; font-weight: 300;">Importar Vendedores</h3>
+                <span class="modal-close" onclick="closeImportVendedoresModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9em; margin-bottom: 15px;">
+                    Selecione um arquivo Excel (.xlsx).
+                    <br>Primeira linha ignorada.
+                </p>
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center; border: 1px solid var(--border-color);">
+                    <p style="margin: 0 0 10px 0; font-size: 0.8em; color: var(--accent); text-transform: uppercase; font-weight: bold;">Formato do Cabeçalho</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; font-size: 0.8em;">
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-weight: bold;">NOME</div>
+                        <div style="background: rgba(255,255,255,0.1); color: var(--accent); padding: 8px; border-bottom: 1px solid var(--border-color); font-weight: bold;">TIME</div>
+                        <div style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.1);">Carlos Sales</div>
+                        <div style="padding: 6px;">Time Beta</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="importVendedoresFile" style="cursor: pointer; display: block; background: rgba(255,255,255,0.05); padding: 20px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; transition: all 0.2s;">
+                        <span id="fileNameDisplayVendedores">Clique para selecionar o arquivo .xlsx</span>
+                    </label>
+                    <input type="file" id="importVendedoresFile" accept=".xlsx" style="display: none;" onchange="updateFileNameDisplay(this, 'fileNameDisplayVendedores')">
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <span id="importVendedoresStatus" style="font-size: 0.9em; margin-right: 15px; display: inline-block;"></span>
+                    <button class="btn btn-secondary" onclick="closeImportVendedoresModal()">Cancelar</button>
+                    <button class="btn" onclick="uploadVendedoresFile()" style="background-color: #28a745; margin-left: 10px;">Importar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PRODUTO -->
     <div class="modal-overlay" id="produtoModal">
         <div class="modal-content" style="max-width: 500px;">
@@ -751,25 +1043,42 @@
             document.getElementById('btnEditVenda').style.display = 'none';
 
             // Reset fields
-            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'timeSelect', 'data', 'placas', 'inversor', 'potencia', 'valorVenda', 'valorMaterial', 'nf', 'ov'];
+            // Removed 'inversor' from fields logic, handled via List now.
+            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'timeSelect', 'data', 'placas', 'potencia', 'valorVenda', 'valorMaterial', 'nf', 'ov'];
             fields.forEach(f => {
                 const el = document.getElementById(f);
                 if(el) {
-                    el.value = '';
+                    if (f === 'estado') {
+                        el.value = 'SC';
+                        loadCidades('SC');
+                    } else {
+                        el.value = '';
+                    }
                     el.disabled = false;
                 }
             });
             
             // Enable Cart Inputs
+            document.getElementById('itemGrupoSelect').disabled = false;
             document.getElementById('itemProdutoSelect').disabled = false;
             document.getElementById('itemQtd').disabled = false;
             document.getElementById('itemValorVenda').disabled = false;
             document.getElementById('itemCusto').disabled = false;
             document.querySelector("button[onclick='addItemToCart()']").disabled = false;
 
+             // Enable Inverter Inputs
+             document.getElementById('invFabricante').disabled = false;
+             document.getElementById('invPotencia').disabled = false;
+             document.getElementById('invQtd').disabled = false;
+             document.querySelector("button[onclick='addInverterToCart()']").disabled = false;
+
             // Reset Cart
             currentCart = [];
             updateCartTable();
+
+            // Reset Inverters
+            currentInverters = [];
+            updateInverterTable();
             
             document.getElementById('vendaModal').classList.add('modal-active');
         }
@@ -787,17 +1096,19 @@
             document.getElementById('telefone').value = venda.telefone || '';
             document.getElementById('cidade').value = venda.cidade || '';
             document.getElementById('estado').value = venda.estado || '';
+            if (venda.estado) {
+                loadCidades(venda.estado);
+            }
             
             // Dropdowns need special care
             const vendSel = document.getElementById('vendedorSelect');
             vendSel.value = venda.vendedor || '';
-            // Trigger manual change event simulation to load time? 
-            // Better set time manually if it doesn't auto-trigger or if existing in text.
+            
             document.getElementById('timeSelect').value = venda.time || '';
 
             document.getElementById('data').value = venda.data || '';
             document.getElementById('placas').value = venda.placas || '';
-            document.getElementById('inversor').value = venda.inversor || '';
+            // document.getElementById('inversor').value = venda.inversor || ''; REMOVED
             document.getElementById('potencia').value = venda.potencia || '';
             document.getElementById('valorVenda').value = venda.valorVenda || '';
             document.getElementById('valorMaterial').value = venda.valorMaterial || '';
@@ -808,20 +1119,31 @@
             currentCart = venda.produto ? JSON.parse(JSON.stringify(venda.produto)) : [];
             updateCartTable();
 
+            // Populate Inverters
+            currentInverters = venda.inverterInfo ? JSON.parse(JSON.stringify(venda.inverterInfo)) : [];
+            updateInverterTable();
+
             // Disable Everything
-            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'timeSelect', 'data', 'placas', 'inversor', 'potencia', 'nf', 'ov']; // Valors are readonly anyway
+            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'timeSelect', 'data', 'placas', 'potencia', 'nf', 'ov']; // Valors are readonly anyway
             fields.forEach(f => document.getElementById(f).disabled = true);
 
             // Disable Cart Inputs
+            document.getElementById('itemGrupoSelect').disabled = true;
             document.getElementById('itemProdutoSelect').disabled = true;
             document.getElementById('itemQtd').disabled = true;
             document.getElementById('itemValorVenda').disabled = true;
             document.getElementById('itemCusto').disabled = true;
             document.querySelector("button[onclick='addItemToCart()']").disabled = true;
+
+             // Disable Inverter Inputs
+            document.getElementById('invFabricante').disabled = true;
+            document.getElementById('invPotencia').disabled = true;
+            document.getElementById('invQtd').disabled = true;
+            document.querySelector("button[onclick='addInverterToCart()']").disabled = true;
             
             // Hide delete buttons in cart table (CSS or just JS rebuild)
-            const removeBtns = document.querySelectorAll("#cartTable button");
-            removeBtns.forEach(btn => btn.disabled = true);
+            document.querySelectorAll("#cartTable button").forEach(btn => btn.disabled = true);
+            document.querySelectorAll("#inverterTable button").forEach(btn => btn.disabled = true);
 
             // Toggle Buttons
             document.getElementById('btnSalvarVenda').style.display = 'none';
@@ -831,18 +1153,25 @@
         function enableEdit() {
             document.getElementById('modalVendaTitle').innerText = 'Editar Venda';
             
-            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'data', 'placas', 'inversor', 'potencia', 'nf', 'ov'];
+            const fields = ['cliente', 'telefone', 'cidade', 'estado', 'vendedorSelect', 'data', 'placas', 'potencia', 'nf', 'ov'];
             fields.forEach(f => document.getElementById(f).disabled = false);
 
+            document.getElementById('itemGrupoSelect').disabled = false;
             document.getElementById('itemProdutoSelect').disabled = false;
             document.getElementById('itemQtd').disabled = false;
             document.getElementById('itemValorVenda').disabled = false;
             document.getElementById('itemCusto').disabled = false;
             document.querySelector("button[onclick='addItemToCart()']").disabled = false;
 
+            // Enable Inverter Inputs
+            document.getElementById('invFabricante').disabled = false;
+            document.getElementById('invPotencia').disabled = false;
+            document.getElementById('invQtd').disabled = false;
+            document.querySelector("button[onclick='addInverterToCart()']").disabled = false;
+
              // Enable delete buttons in cart
-            const removeBtns = document.querySelectorAll("#cartTable button");
-            removeBtns.forEach(btn => btn.disabled = false);
+            document.querySelectorAll("#cartTable button").forEach(btn => btn.disabled = false);
+            document.querySelectorAll("#inverterTable button").forEach(btn => btn.disabled = false);
 
             document.getElementById('btnSalvarVenda').style.display = 'block';
             document.getElementById('btnEditVenda').style.display = 'none';
@@ -886,10 +1215,112 @@
              return (num * 100).toFixed(2) + '%'; 
         }
 
+        // Inverters Logic
+        let currentInverters = [];
+
+        function updateInverterTable() {
+            const tbody = document.querySelector("#inverterTable tbody");
+            tbody.innerHTML = "";
+            currentInverters.forEach((item, index) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${item.fabricante}</td>
+                    <td>${item.potencia} kW</td>
+                    <td>${item.quantidade}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="removeInverter(${index})" style="padding: 2px 6px; font-size: 0.8em; color: #ff6060; border-color: #ff6060;">X</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addInverterToCart() {
+            const fab = document.getElementById('invFabricante').value;
+            let pot = document.getElementById('invPotencia').value;
+            const qtd = document.getElementById('invQtd').value;
+
+            if (!pot || !qtd) { alert('Preencha Potência e Quantidade'); return; }
+
+            // Clean Potencia (replace comma with dot if needed, ensure valid number)
+            pot = pot.replace(',', '.').replace(/[^0-9.]/g, '');
+            const potNum = parseFloat(pot);
+
+            if (isNaN(potNum)) { alert('Potência inválida'); return; }
+
+            const qtdNum = parseInt(qtd);
+            if (isNaN(qtdNum) || qtdNum <= 0) { alert('Quantidade inválida'); return; }
+
+            // Check if exists
+            const existingIndex = currentInverters.findIndex(i => i.fabricante === fab && i.potencia === potNum);
+
+            if (existingIndex >= 0) {
+                 currentInverters[existingIndex].quantidade += qtdNum;
+            } else {
+                const item = {
+                    fabricante: fab,
+                    potencia: potNum, // Store as number
+                    quantidade: qtdNum
+                };
+                currentInverters.push(item);
+            }
+            
+            updateInverterTable();
+
+            document.getElementById('invPotencia').value = '';
+            document.getElementById('invQtd').value = '1';
+        }
+
+        function removeInverter(index) {
+            currentInverters.splice(index, 1);
+            updateInverterTable();
+        }
+
         let _CACHE_TIMES = [];
         let _CACHE_VENDEDORES = [];
 
+        async function loadUFs() {
+            try {
+                const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+                const estados = await response.json();
+                const estadoSelect = document.getElementById('estado');
+                estadoSelect.innerHTML = '<option value="">Selecione...</option>';
+                estados.forEach(uf => {
+                    const opt = document.createElement('option');
+                    opt.value = uf.sigla;
+                    opt.innerText = uf.sigla + ' - ' + uf.nome; 
+                    if (uf.sigla === 'SC') opt.selected = true; // Pre-select Santa Catarina
+                    estadoSelect.appendChild(opt);
+                });
+                
+                // Load SC cities by default if pre-selected
+                if(estadoSelect.value === 'SC') loadCidades('SC');
+
+            } catch (e) {
+                console.error("Erro ao carregar UFs:", e);
+            }
+        }
+
+        async function loadCidades(ufSigla) {
+            const cidadeDataList = document.getElementById('cidadeDataList');
+            cidadeDataList.innerHTML = '';
+            if (!ufSigla) return;
+            try {
+                const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufSigla}/municipios`);
+                const cidades = await response.json();
+                cidades.forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = city.nome;
+                    cidadeDataList.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("Erro ao carregar Cidades:", e);
+            }
+        }
+
         async function loadAuxData() {
+            loadUFs(); // Initialize UFs
+
             try {
                 const [vendedores, times] = await Promise.all([
                     fetch('/api/vendas/vendedores').then(r => r.json()),
@@ -900,18 +1331,20 @@
                 _CACHE_VENDEDORES = vendedores;
 
                 const vSel = document.getElementById('vendedorSelect');
+                const vDataList = document.getElementById('vendedorDataList');
                 const tSel = document.getElementById('timeSelect');
                 const vTimeSel = document.getElementById('vendedorTimeSelectInput');
                 const vList = document.getElementById('vendedoresList');
                 const tList = document.getElementById('timesList');
 
-                vSel.innerHTML = '<option value="">Selecione...</option>';
+                vDataList.innerHTML = '';
                 // tSel (Time) is now an input, handled automatically
                 vTimeSel.innerHTML = '<option value="">Sem Time</option>';
                 vList.innerHTML = '';
                 tList.innerHTML = '';
 
                 // Listen for Seller change to update Time
+                // Use 'input' event for datalist to react faster or keep 'change'
                 vSel.onchange = function() {
                     const selName = this.value;
                     const vendor = _CACHE_VENDEDORES.find(v => v.nome === selName);
@@ -922,6 +1355,13 @@
                         tInput.value = '';
                     }
                 };
+
+                // Populate Vendedor Datalist
+                vendedores.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.nome;
+                    vDataList.appendChild(opt);
+                });
 
                 times.forEach(t => {
                     // Dropdown for Time - Removed (now automatic)
@@ -952,11 +1392,7 @@
                 });
 
                 vendedores.forEach(v => {
-                    // Dropdown
-                    const opt = document.createElement('option');
-                    opt.value = v.nome;
-                    opt.innerText = v.nome;
-                    vSel.appendChild(opt);
+                    // Dropdown (DataList populated above)
                     
                     // List
                     const li = document.createElement('li');
@@ -972,6 +1408,10 @@
                     `;
                     vList.appendChild(li);
                 });
+                
+                // Init Filters ONCE
+                initDashboardFilters();
+
             } catch(e) { console.error("Erro ao carregar auxiliares", e); }
         }
 
@@ -1102,6 +1542,9 @@
         }
 
         async function loadVendas() {
+            // Clear table filter when loading new data
+            if(document.getElementById('tableFilter')) document.getElementById('tableFilter').value = '';
+
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
             
@@ -1158,8 +1601,8 @@
                     <td>${v.vendedor || ''}</td>
                     <td>${formatDate(v.data)}</td>
                     <td>${v.placas || ''}</td>
-                    <td>${v.inversor || ''}</td>
                     <td>${v.potencia || ''}</td>
+                    <td>${v.inversor || ''}</td>
                     <td>${formatMoney(v.valorVenda)}</td>
                     <td>${formatMoney(v.valorMaterial)}</td>
                     <td>${formatMoney(v.valorBruto)}</td>
@@ -1168,6 +1611,64 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function filterTable() {
+            const input = document.getElementById("tableFilter");
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById("vendasTable");
+            const tbody = table.getElementsByTagName("tbody")[0];
+            const trs = tbody.getElementsByTagName("tr");
+
+            for (let i = 0; i < trs.length; i++) {
+                // Skip if it is a message row (colspan)
+                if (trs[i].cells.length < 2) continue;
+
+                let txtValue = trs[i].textContent || trs[i].innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    trs[i].style.display = "";
+                } else {
+                    trs[i].style.display = "none";
+                }
+            }
+        }
+
+        // Generic Table Filter (for Products, etc)
+        function filterTableGeneric(tableId, inputId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById(tableId);
+            const tbody = table.getElementsByTagName("tbody")[0];
+            const trs = tbody.getElementsByTagName("tr");
+
+            for (let i = 0; i < trs.length; i++) {
+                // Skip if it is a message row (colspan) or header
+                if (trs[i].getElementsByTagName("td").length === 0) continue; // safety check
+                
+                let txtValue = trs[i].textContent || trs[i].innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    trs[i].style.display = "";
+                } else {
+                    trs[i].style.display = "none";
+                }
+            }
+        }
+
+        // Generic List Filter (for Times, Vendedores)
+        function filterList(listId, inputId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toLowerCase();
+            const ul = document.getElementById(listId);
+            const li = ul.getElementsByTagName("li");
+
+            for (let i = 0; i < li.length; i++) {
+                let txtValue = li[i].textContent || li[i].innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    li[i].style.display = "";
+                } else {
+                    li[i].style.display = "none";
+                }
+            }
         }
 
         function updatePagination(current, total) {
@@ -1193,6 +1694,13 @@
             const status = document.getElementById('saveStatus');
             const id = document.getElementById('vendaId').value;
             
+            // Concatenate Inverters for legacy field
+            let inverterString = "";
+            if (currentInverters.length > 0) {
+                // Example: "1x WEG 5.0kW, 2x WEG 3.0kW"
+                inverterString = currentInverters.map(i => `${i.quantidade}x ${i.fabricante} ${i.potencia}kW`).join(", ");
+            }
+
             // Basic gathering, could be improved with FormData
             const venda = {
                 id: id || null,
@@ -1204,7 +1712,8 @@
                 time: document.getElementById('timeSelect').value,
                 data: document.getElementById('data').value || null,
                 placas: document.getElementById('placas').value,
-                inversor: document.getElementById('inversor').value,
+                inversor: inverterString, // Set legacy string
+                inverterInfo: currentInverters, // Set JSON structured data
                 potencia: document.getElementById('potencia').value,
                 valorVenda: document.getElementById('valorVenda').value || null,
                 valorMaterial: document.getElementById('valorMaterial').value || null,
@@ -1336,6 +1845,145 @@
         }
 
         // --- CRUD Produtos ---
+        let _ALL_PRODUTOS = [];
+
+        function openImportProdutosModal() {
+            document.getElementById('importProdutosModalOverlay').style.display = 'flex';
+            document.getElementById('importProdutosFile').value = '';
+            document.getElementById('importProdutosStatus').innerText = '';
+        }
+
+        function closeImportProdutosModal() {
+            document.getElementById('importProdutosModalOverlay').style.display = 'none';
+        }
+
+        function updateFileNameDisplay(input, targetId = 'fileNameDisplay') {
+            const display = document.getElementById(targetId);
+            if(input.files && input.files.length > 0) {
+                display.innerText = input.files[0].name;
+                display.style.color = "lightgreen";
+            } else {
+                display.innerText = "Clique para selecionar o arquivo .xlsx";
+                display.style.color = "#ccc";
+            }
+        }
+
+        // --- Import Times ---
+        function openImportTimesModal() {
+            document.getElementById('importTimesModalOverlay').style.display = 'flex';
+            document.getElementById('importTimesFile').value = '';
+            document.getElementById('importTimesStatus').innerText = '';
+            updateFileNameDisplay(document.getElementById('importTimesFile'), 'fileNameDisplayTimes');
+        }
+
+        function closeImportTimesModal() {
+            document.getElementById('importTimesModalOverlay').style.display = 'none';
+        }
+
+        async function uploadTimesFile() {
+             const fileInput = document.getElementById('importTimesFile');
+            const status = document.getElementById('importTimesStatus');
+            
+            if(fileInput.files.length === 0) { alert("Selecione um arquivo!"); return; }
+            
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            
+            status.innerText = "Enviando...";
+            status.style.color = "#ccc";
+
+             try {
+                const response = await fetch('/api/vendas/times/upload', { method: 'POST', body: formData });
+                if (response.ok) {
+                    status.innerText = await response.text();
+                    status.style.color = "lightgreen";
+                    setTimeout(() => { closeImportTimesModal(); loadTimes(); }, 1500);
+                } else {
+                    const txt = await response.text();
+                    status.innerText = txt;
+                    status.style.color = "red";
+                    // Toast error as requested
+                    alert("Erro: " + txt);
+                }
+            } catch (error) { status.innerText = "Erro: " + error; status.style.color = "red"; }
+        }
+
+        // --- Import Vendedores ---
+        function openImportVendedoresModal() {
+            document.getElementById('importVendedoresModalOverlay').style.display = 'flex';
+            document.getElementById('importVendedoresFile').value = '';
+            document.getElementById('importVendedoresStatus').innerText = '';
+            updateFileNameDisplay(document.getElementById('importVendedoresFile'), 'fileNameDisplayVendedores');
+        }
+
+        function closeImportVendedoresModal() {
+            document.getElementById('importVendedoresModalOverlay').style.display = 'none';
+        }
+
+        async function uploadVendedoresFile() {
+             const fileInput = document.getElementById('importVendedoresFile');
+            const status = document.getElementById('importVendedoresStatus');
+            
+            if(fileInput.files.length === 0) { alert("Selecione um arquivo!"); return; }
+            
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            
+            status.innerText = "Enviando...";
+            status.style.color = "#ccc";
+
+             try {
+                const response = await fetch('/api/vendas/vendedores/upload', { method: 'POST', body: formData });
+                if (response.ok) {
+                    status.innerText = await response.text();
+                    status.style.color = "lightgreen";
+                    setTimeout(() => { closeImportVendedoresModal(); loadVendedores(); }, 1500);
+                } else {
+                    status.innerText = "Erro: " + await response.text();
+                    status.style.color = "red";
+                }
+            } catch (error) { status.innerText = "Erro: " + error; status.style.color = "red"; }
+        }
+
+        async function uploadProdutosFile() {
+            const fileInput = document.getElementById('importProdutosFile');
+            const status = document.getElementById('importProdutosStatus');
+            
+            if(fileInput.files.length === 0) {
+                alert("Selecione um arquivo!");
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            status.innerText = "Enviando...";
+            status.style.color = "#ccc";
+
+            try {
+                const response = await fetch('/api/vendas/produtos/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    status.innerText = await response.text();
+                    status.style.color = "lightgreen";
+                    setTimeout(() => {
+                        closeImportProdutosModal();
+                        loadProdutos(); // Refresh list
+                    }, 1500);
+                } else {
+                    status.innerText = "Erro: " + await response.text();
+                    status.style.color = "red";
+                }
+            } catch (error) {
+                status.innerText = "Erro no upload: " + error;
+                status.style.color = "red";
+            }
+        }
+
         async function loadProdutos() {
             try {
                 const response = await fetch('/api/vendas/produtos');
@@ -1343,21 +1991,16 @@
                 const text = await response.text();
                 if(!text) return; // No content
                 
-                const produtos = JSON.parse(text);
+                _ALL_PRODUTOS = JSON.parse(text);
                 
                 // Populate Table
                 const tbody = document.querySelector('#produtosTable tbody');
                 tbody.innerHTML = '';
                 
-                // Populate Dropdown (Modal Venda)
-                const select = document.getElementById('itemProdutoSelect');
-                select.innerHTML = '<option value="">Selecione...</option>';
-
-                if(produtos.length === 0) {
+                if(_ALL_PRODUTOS.length === 0) {
                      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
-                     // return; // Don't return, keep select cleared
                 } else {
-                    produtos.forEach(p => {
+                    _ALL_PRODUTOS.forEach(p => {
                         // Table
                         const tr = document.createElement('tr');
                         const safeDesc = p.descricao ? p.descricao.replace(/'/g, "\\'") : '';
@@ -1374,15 +2017,59 @@
                             </td>
                         `;
                         tbody.appendChild(tr);
-
-                        // Dropdown
-                        const opt = document.createElement('option');
-                        opt.value = p.id;
-                        opt.innerText = p.descricao;
-                        select.appendChild(opt);
                     });
                 }
+                
+                populateGruposAndProducts();
+
             } catch(e) { console.error("Erro ao carregar produtos", e); }
+        }
+
+        function populateGruposAndProducts() {
+            const grupoSelect = document.getElementById('itemGrupoSelect');
+            
+            // Extract unique groups
+            const grupos = [...new Set(_ALL_PRODUTOS.map(p => p.grupo).filter(g => g))].sort();
+            
+            grupoSelect.innerHTML = '<option value="">Todos</option>';
+            grupos.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.innerText = g;
+                grupoSelect.appendChild(opt);
+            });
+
+            // Initial populate of products (all)
+            filterProdutosByGrupo(); 
+        }
+
+        function filterProdutosByGrupo() {
+            const grupoSelect = document.getElementById('itemGrupoSelect');
+            const produtoSelect = document.getElementById('itemProdutoSelect');
+            const selectedGrupo = grupoSelect.value;
+            
+            const currentVal = produtoSelect.value;
+
+            produtoSelect.innerHTML = '<option value="">Selecione...</option>';
+            
+            const filtered = selectedGrupo 
+                ? _ALL_PRODUTOS.filter(p => p.grupo === selectedGrupo)
+                : _ALL_PRODUTOS;
+            
+            // Sort alphabetically for better UX
+            filtered.sort((a,b) => (a.descricao || '').localeCompare(b.descricao || ''));
+
+            filtered.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.descricao;
+                produtoSelect.appendChild(opt);
+            });
+            
+            // Try to keep selection if valid
+            if (currentVal && filtered.some(p => p.id == currentVal)) {
+                produtoSelect.value = currentVal;
+            }
         }
 
         function openProdutoModal(id = null, descricao = '', grupo = '', unidade = '') {
@@ -1442,9 +2129,45 @@
         let chartMensalInstance = null;
         let chartVendedoresInstance = null;
         let chartTimesPieInstance = null;
-        let chartTimesLineInstance = null;
+        let chartTimeSpecificPieInstance = null; 
+
+        async function initDashboardFilters() {
+             // Populate Dropdown if needed
+            const timeFilter = document.getElementById('dashTimeFilter');
+            
+            if (timeFilter && timeFilter.options.length <= 1) {
+                 const optST = document.createElement('option');
+                 optST.value = "SEM_TIME_REF";
+                 optST.innerHTML = "Sem Time";
+                 timeFilter.appendChild(optST);
+
+                 if (_CACHE_TIMES.length > 0) {
+                     _CACHE_TIMES.forEach(t => {
+                         const opt = document.createElement('option');
+                         opt.value = t.nome;
+                         opt.innerHTML = t.nome;
+                         timeFilter.appendChild(opt);
+                     });
+                 }
+            }
+
+            // Init Multi-Select Logic ONLY IF EMPTY
+            const msTimesBody = document.getElementById('msTimesBody');
+            if (msTimesBody && msTimesBody.children.length === 0) {
+                 setupMultiSelect('msTimesBody', _CACHE_TIMES.map(t => t.nome), onTimesFilterChange);
+                 setupMultiSelect('msVensBody', _CACHE_VENDEDORES.map(v => v.nome), onVendorsFilterChange);
+                 // onTimesFilterChange(); // Do not verify logic on init to avoid reseting state
+            }
+        }
 
         async function loadDashboards() {
+            // Ensure filters are initialized (idempotent check inside)
+            await initDashboardFilters();
+
+            // Load Filtered Charts (Evolution and Vendors)
+            await loadFilteredCharts();
+
+            // Load Global Charts (Only responsive to Date Range)
             const inicio = document.getElementById('dashDataInicio').value;
             const fim = document.getElementById('dashDataFim').value;
             
@@ -1455,25 +2178,189 @@
             if (params.length > 0) queryString = '?' + params.join('&');
 
             try {
-                const [mensal, vendedores, times, timesMensal] = await Promise.all([
+                // Fetch Global data (Teams Pie Only)
+                const [times] = await Promise.all([
+                    fetch(`/api/vendas/dashboard/times${queryString}`).then(r => r.json())
+                ]);
+
+                renderChartTimesPie(times);
+                
+                // Load specific time chart logic
+                loadDashboardTimeSpecific();
+
+            } catch(e) { console.error("Erro ao carregar dashboards globais", e); }
+        }
+
+        async function loadFilteredCharts() {
+             const inicio = document.getElementById('dashDataInicio').value;
+             const fim = document.getElementById('dashDataFim').value;
+             
+             let queryString = '';
+             const params = [];
+             if (inicio) params.push(`inicio=${inicio}`);
+             if (fim) params.push(`fim=${fim}`);
+             
+             // Add Multi-select Filters
+             const selectedTimes = getCheckedValues('msTimesBody');
+             if (selectedTimes.length > 0) {
+                 selectedTimes.forEach(t => params.push(`times=${encodeURIComponent(t)}`));
+             }
+ 
+             const selectedVens = getCheckedValues('msVensBody');
+             if (selectedVens.length > 0) {
+                 selectedVens.forEach(v => params.push(`vendedores=${encodeURIComponent(v)}`));
+             }
+ 
+             if (params.length > 0) queryString = '?' + params.join('&');
+
+             try {
+                const [mensal, vendedores] = await Promise.all([
                     fetch(`/api/vendas/dashboard/mensal${queryString}`).then(r => r.json()),
-                    fetch(`/api/vendas/dashboard/vendedores${queryString}`).then(r => r.json()),
-                    fetch(`/api/vendas/dashboard/times${queryString}`).then(r => r.json()),
-                    fetch(`/api/vendas/dashboard/times-mensal${queryString}`).then(r => r.json())
+                    fetch(`/api/vendas/dashboard/vendedores${queryString}`).then(r => r.json())
                 ]);
 
                 renderChartMensal(mensal);
                 renderChartVendedores(vendedores);
-                renderChartTimesPie(times);
-                renderChartTimesLine(timesMensal);
                 calculateTotalPeriodo(mensal);
-            } catch(e) { console.error("Erro ao carregar dashboards", e); }
+             } catch(e) { console.error("Erro ao carregar gráficos filtrados", e); }
         }
+
+        async function loadDashboardTimeSpecific() {
+            const timeName = document.getElementById('dashTimeFilter').value;
+            const ctx = document.getElementById('chartTimeSpecificPie').getContext('2d');
+            
+            if (!timeName) {
+                if(chartTimeSpecificPieInstance) {
+                    chartTimeSpecificPieInstance.destroy();
+                    chartTimeSpecificPieInstance = null;
+                }
+                return;
+            }
+
+            const inicio = document.getElementById('dashDataInicio').value;
+            const fim = document.getElementById('dashDataFim').value;
+            let queryString = `time=${encodeURIComponent(timeName)}`;
+            if (inicio) queryString += `&inicio=${inicio}`;
+            if (fim) queryString += `&fim=${fim}`;
+
+            try {
+                const data = await fetch(`/api/vendas/dashboard/vendedores-time?${queryString}`).then(r => r.json());
+                renderChartTimeSpecificPie(data);
+            } catch(e) { console.error("Erro time specific", e); }
+        }
+
 
         function clearDashFilters() {
             document.getElementById('dashDataInicio').value = '';
             document.getElementById('dashDataFim').value = '';
             loadDashboards();
+        }
+
+        function toggleMs(id) {
+            const el = document.getElementById(id);
+            const isShown = el.classList.contains('show');
+            // Close all first
+            document.querySelectorAll('.multiselect-body').forEach(b => b.classList.remove('show'));
+            // Toggle target
+            if (!isShown) el.classList.add('show');
+        }
+
+        // Close dropdowns when clicking outside
+        window.addEventListener('click', function(e) {
+            if (!e.target.closest('.multiselect')) {
+                document.querySelectorAll('.multiselect-body').forEach(b => b.classList.remove('show'));
+            }
+        });
+
+        function setupMultiSelect(containerId, items, onChangeCallback) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Clear existing
+            
+            items.sort().forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'multiselect-item';
+                div.onclick = (e) => {
+                    // Prevent closing when clicking item
+                    if (e.target !== cb) cb.checked = !cb.checked;
+                    updateMsLabel(containerId);
+                    if(onChangeCallback) onChangeCallback();
+                };
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = item;
+                // Stop propagation safely if needed, but here simple click handler works better
+                // Using div click to toggle checkbox for better UX
+                
+                const span = document.createElement('span');
+                span.innerText = item;
+                
+                div.appendChild(cb);
+                div.appendChild(span);
+                container.appendChild(div);
+            });
+            updateMsLabel(containerId);
+        }
+
+        function updateMsLabel(containerId) {
+            // Find the head associated with this body
+            const container = document.getElementById(containerId);
+            const parent = container.parentElement;
+            const head = parent.querySelector('.multiselect-head');
+            
+            const checked = container.querySelectorAll('input:checked');
+            if (checked.length === 0) {
+                head.innerText = containerId.includes('Times') ? 'Selecionar Times...' : 'Todos';
+            } else if (checked.length === 1) {
+                head.innerText = checked[0].value;
+            } else {
+                head.innerText = `${checked.length} selecionados`;
+            }
+        }
+
+        function getCheckedValues(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return [];
+            return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        }
+
+        function onVendorsFilterChange() {
+            updateMsLabel('msVensBody');
+            loadFilteredCharts();
+        }
+
+        function onTimesFilterChange() {
+            updateMsLabel('msTimesBody');
+            
+            const selectedTimes = getCheckedValues('msTimesBody');
+            const msVensBody = document.getElementById('msVensBody');
+            
+            // Filter vendors
+            let filteredVendors;
+            if (selectedTimes.length === 0) {
+                // Default: Show All
+                filteredVendors = _CACHE_VENDEDORES.map(v => v.nome);
+            } else {
+                // Show vendors belonging to these times
+                const sellers = _CACHE_VENDEDORES.filter(v => {
+                    const tName = v.time ? v.time.nome : 'SEM_TIME_REF'; // Safety
+                    return selectedTimes.includes(tName); 
+                });
+                filteredVendors = sellers.map(v => v.nome);
+            }
+
+            // Re-populate Vendors Dropdown
+            setupMultiSelect('msVensBody', filteredVendors, onVendorsFilterChange);
+            
+            // If we have selected times, Auto-Check these vendors
+            if (selectedTimes.length > 0) {
+                const checkboxes = msVensBody.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => cb.checked = true);
+                updateMsLabel('msVensBody');
+            }
+
+            // Trigger reload immediately
+            loadFilteredCharts();
         }
 
         function calculateTotalPeriodo(data) {
@@ -1523,53 +2410,94 @@
             });
         }
 
+        // Pagination State
+        let _ALL_VENDEDORES_DATA = [];
+        let _VENDEDORES_PAGE = 0;
+        const _VENDEDORES_PAGE_SIZE = 15;
+
         function renderChartVendedores(data) {
-            // Data comes as [ ["Name", 1500.0], ["Name2", 500.0] ] ordered DESC
-            let finalLabels = [];
-            let finalValues = [];
-
-            if (data.length <= 10) {
-                finalLabels = data.map(d => d[0]);
-                finalValues = data.map(d => d[1]);
-            } else {
-                const top9 = data.slice(0, 9);
-                const rest = data.slice(9);
-                
-                finalLabels = top9.map(d => d[0]);
-                finalValues = top9.map(d => d[1]);
-
-                const sumRest = rest.reduce((acc, curr) => acc + curr[1], 0);
-                finalLabels.push('Outros');
-                finalValues.push(sumRest);
+            // If new data is provided, reset state. 
+            // If data is null/undefined, we are just changing pages using existing data.
+            if (data) {
+                _ALL_VENDEDORES_DATA = data;
+                _VENDEDORES_PAGE = 0;
             }
+
+            const total = _ALL_VENDEDORES_DATA.length;
+            const start = _VENDEDORES_PAGE * _VENDEDORES_PAGE_SIZE;
+            const end = start + _VENDEDORES_PAGE_SIZE;
+            
+            // Slice the data for current page
+            const pageData = _ALL_VENDEDORES_DATA.slice(start, end);
+            
+            // Update UI Pagination Controls
+            const pageContainer = document.getElementById('vendedoresPagination');
+            const pageInfo = document.getElementById('vendedoresPageInfo');
+            
+            if (total > _VENDEDORES_PAGE_SIZE) {
+                pageContainer.style.display = 'flex';
+                pageInfo.innerText = `${start + 1}-${Math.min(end, total)} de ${total}`;
+            } else {
+                pageContainer.style.display = 'none';
+            }
+
+            let finalLabels = pageData.map(d => d[0]);
+            let finalValues = pageData.map(d => d[1]);
 
             const ctx = document.getElementById('chartVendedores').getContext('2d');
             if (chartVendedoresInstance) chartVendedoresInstance.destroy();
 
-            // Generate colors
-            const colors = [
-                '#0078d4', '#00bcf2', '#009e49', '#ff8c00', '#e81123',
-                '#881798', '#5c2d91', '#e3008c', '#bf0077', '#744da9'
-            ];
-
             chartVendedoresInstance = new Chart(ctx, {
-                type: 'pie',
+                type: 'bar',
                 data: {
                     labels: finalLabels,
                     datasets: [{
+                        label: 'Vendas (R$)',
                         data: finalValues,
-                        backgroundColor: colors.slice(0, finalLabels.length),
-                        borderWidth: 0
+                        backgroundColor: '#0078d4',
+                        borderColor: '#005a9e',
+                        borderWidth: 1
                     }]
                 },
                 options: {
+                    indexAxis: 'y', // Makes it horizontal
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#e0e1dd' } }
+                         legend: { display: false },
+                         tooltip: { 
+                             callbacks: { 
+                                 label: function(ctx) { return 'R$ ' + ctx.parsed.x.toLocaleString('pt-BR'); }
+                             }
+                         }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { color: '#e0e1dd' }, 
+                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                        },
+                        y: { 
+                            ticks: { color: '#e0e1dd' }, 
+                            grid: { display: false } // Cleaner look for names
+                        }
                     }
                 }
             });
+        }
+
+        function prevPageVendedores() {
+            if (_VENDEDORES_PAGE > 0) {
+                _VENDEDORES_PAGE--;
+                renderChartVendedores();
+            }
+        }
+
+        function nextPageVendedores() {
+            const maxPage = Math.ceil(_ALL_VENDEDORES_DATA.length / _VENDEDORES_PAGE_SIZE) - 1;
+            if (_VENDEDORES_PAGE < maxPage) {
+                _VENDEDORES_PAGE++;
+                renderChartVendedores();
+            }
         }
 
         function renderChartTimesPie(data) {
@@ -1603,53 +2531,44 @@
             });
         }
 
-        function renderChartTimesLine(data) {
-            // Data: [ ["2023-01", "TeamA", 100], ["2023-01", "TeamB", 200] ]
-            const ctx = document.getElementById('chartTimesLine').getContext('2d');
-            if (chartTimesLineInstance) chartTimesLineInstance.destroy();
+        function renderChartTimeSpecificPie(data) {
+            const ctx = document.getElementById('chartTimeSpecificPie').getContext('2d');
+            if (chartTimeSpecificPieInstance) chartTimeSpecificPieInstance.destroy();
 
-            // Extract unique months and teams
-            const months = [...new Set(data.map(d => d[0]))]; // Sorted by query
-            const teams = [...new Set(data.map(d => d[1] || 'Sem Time'))];
+            const labels = data.map(d => d[0]); // Nome Vendedor
+            const values = data.map(d => d[1]); // Valor
 
-            const colors = ['#0078d4', '#e81123', '#009e49', '#ff8c00', '#881798', '#00bcf2'];
+            // Generate colors
+            const colors = [
+                '#0078d4', '#00bcf2', '#009e49', '#ff8c00', '#e81123',
+                '#881798', '#5c2d91', '#e3008c', '#bf0077', '#744da9'
+            ];
 
-            // Build datasets
-            const datasets = teams.map((team, index) => {
-                const teamData = [];
-                months.forEach(month => {
-                    const found = data.find(d => d[0] === month && (d[1] || 'Sem Time') === team);
-                    teamData.push(found ? found[2] : 0);
-                });
-
-                return {
-                    label: team,
-                    data: teamData,
-                    borderColor: colors[index % colors.length],
-                    backgroundColor: colors[index % colors.length],
-                    tension: 0.3,
-                    fill: false
-                };
-            });
-
-            chartTimesLineInstance = new Chart(ctx, {
-                type: 'line',
+            chartTimeSpecificPieInstance = new Chart(ctx, {
+                type: 'pie',
                 data: {
-                    labels: months,
-                    datasets: datasets
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 0
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: '#e0e1dd' } }
-                    },
-                    scales: {
-                        x: { ticks: { color: '#e0e1dd' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        y: { 
-                            ticks: { color: '#e0e1dd', callback: (val) => 'R$ ' + val }, 
-                            grid: { color: 'rgba(255,255,255,0.1)' } 
-                        }
+                        legend: { position: 'right', labels: { color: '#e0e1dd' } },
+                        tooltip: { 
+                             callbacks: { 
+                                 label: function(ctx) { 
+                                     const val = ctx.parsed;
+                                     const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                     const pct = ((val / total) * 100).toFixed(1) + '%';
+                                     return ctx.label + ': ' + pct + ' (R$ ' + val.toLocaleString('pt-BR') + ')';
+                                 }
+                             }
+                         }
                     }
                 }
             });

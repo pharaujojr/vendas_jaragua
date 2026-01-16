@@ -158,6 +158,49 @@ public class VendaController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
     }
 
+    @PostMapping("/produtos/upload")
+    public ResponseEntity<String> uploadProdutosFile(@RequestParam("file") MultipartFile file) {
+        String message = "";
+        if (ExcelHelper.hasExcelFormat(file)) {
+            try {
+                excelService.saveProdutos(file);
+                message = "Produtos importados com sucesso: " + file.getOriginalFilename();
+                return ResponseEntity.status(HttpStatus.OK).body(message);
+            } catch (Exception e) {
+                message = "Falha ao importar produtos: " + file.getOriginalFilename() + ". Error: " + e.getMessage();
+                return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(message);
+            }
+        }
+        message = "Por favor envie um arquivo Excel!";
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
+    }
+
+    @PostMapping("/times/upload")
+    public ResponseEntity<String> uploadTimesFile(@RequestParam("file") MultipartFile file) {
+        if (ExcelHelper.hasExcelFormat(file)) {
+            try {
+                excelService.saveTimes(file);
+                return ResponseEntity.status(HttpStatus.OK).body("Times importados com sucesso.");
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body("Erro: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Arquivo inválido!");
+    }
+
+    @PostMapping("/vendedores/upload")
+    public ResponseEntity<String> uploadVendedoresFile(@RequestParam("file") MultipartFile file) {
+        if (ExcelHelper.hasExcelFormat(file)) {
+            try {
+                excelService.saveVendedores(file);
+                return ResponseEntity.status(HttpStatus.OK).body("Vendedores importados com sucesso.");
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body("Erro: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Arquivo inválido!");
+    }
+
     @GetMapping
     public ResponseEntity<Page<Venda>> getAllVendas(
             @RequestParam(defaultValue = "0") int page,
@@ -236,11 +279,18 @@ public class VendaController {
     @GetMapping("/dashboard/mensal")
     public ResponseEntity<List<Object[]>> getDashboardMensal(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
+            @RequestParam(required = false) List<String> times,
+            @RequestParam(required = false) List<String> vendedores
     ) {
         if (inicio == null) inicio = LocalDate.of(2000, 1, 1);
         if (fim == null) fim = LocalDate.now().plusYears(100);
-        return new ResponseEntity<>(vendaRepository.findVendasPorMes(inicio, fim), HttpStatus.OK);
+        
+        // Handle empty lists if Spring passes them as empty instead of null
+        if (times != null && times.isEmpty()) times = null;
+        if (vendedores != null && vendedores.isEmpty()) vendedores = null;
+
+        return new ResponseEntity<>(vendaRepository.findVendasPorMes(inicio, fim, times, vendedores), HttpStatus.OK);
     }
 
     @GetMapping("/dashboard/vendedores")
@@ -271,6 +321,21 @@ public class VendaController {
         if (inicio == null) inicio = LocalDate.of(2000, 1, 1);
         if (fim == null) fim = LocalDate.now().plusYears(100);
         return new ResponseEntity<>(vendaRepository.findEvolucaoVendasPorTime(inicio, fim), HttpStatus.OK);
+    }
+
+    @GetMapping("/dashboard/vendedores-time")
+    public ResponseEntity<List<Object[]>> getDashboardVendedoresTime(
+            @RequestParam String time,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim
+    ) {
+        if (inicio == null) inicio = LocalDate.of(2000, 1, 1);
+        if (fim == null) fim = LocalDate.now().plusYears(100);
+        
+        if ("SEM_TIME_REF".equals(time)) {
+             return new ResponseEntity<>(vendaRepository.findVendasPorVendedorWhereTimeIsNull(inicio, fim), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(vendaRepository.findVendasPorVendedorAndTime(time, inicio, fim), HttpStatus.OK);
     }
 }
 
