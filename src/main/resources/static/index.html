@@ -1751,7 +1751,7 @@
                     if (response.ok) {
                         alert('Venda excluída com sucesso!');
                         closeModal();
-                        filtrarVendas(); // Refresh list
+                        loadVendas(); // Refresh list
                     } else {
                         alert('Erro ao excluir venda. Tente novamente.');
                         console.error('Delete failed:', response.status);
