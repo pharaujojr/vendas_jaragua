@@ -25,11 +25,12 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
             List<String> produtos) {
         
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT COALESCE(item->>'grupo', 'Não Especificado') as grupo, ");
+        sql.append("SELECT COALESCE(p.grupo, 'Não Especificado') as grupo, ");
         sql.append("SUM(CAST(COALESCE(NULLIF(item->>'valorUnitarioVenda', ''), '0') AS NUMERIC) * ");
         sql.append("CAST(COALESCE(NULLIF(item->>'quantidade', ''), '0') AS INTEGER)) as total ");
         sql.append("FROM vendas_jaragua v ");
         sql.append("CROSS JOIN jsonb_array_elements(COALESCE(v.produto, CAST('[]' AS jsonb))) AS item ");
+        sql.append("LEFT JOIN jaragua_produtos p ON item->>'nomeProduto' = p.descricao ");
         sql.append("WHERE v.data_venda BETWEEN :dataInicio AND :dataFim ");
         
         if (times != null && !times.isEmpty()) {
@@ -39,8 +40,8 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
             sql.append("AND v.vendedor IN (:vendedores) ");
         }
         if (grupos != null && !grupos.isEmpty()) {
-            sql.append("AND (item->>'grupo' IN (:grupos) OR ");
-            sql.append("(COALESCE(item->>'grupo', '') = '' AND 'Não Especificado' IN (:grupos))) ");
+            sql.append("AND (p.grupo IN (:grupos) OR ");
+            sql.append("(COALESCE(p.grupo, '') = '' AND 'Não Especificado' IN (:grupos))) ");
         }
         if (produtos != null && !produtos.isEmpty()) {
             sql.append("AND item->>'nomeProduto' IN (:produtos) ");
@@ -84,6 +85,7 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
         sql.append("CAST(COALESCE(NULLIF(item->>'quantidade', ''), '0') AS INTEGER)) as total ");
         sql.append("FROM vendas_jaragua v ");
         sql.append("CROSS JOIN jsonb_array_elements(COALESCE(v.produto, CAST('[]' AS jsonb))) AS item ");
+        sql.append("LEFT JOIN jaragua_produtos p ON item->>'nomeProduto' = p.descricao ");
         sql.append("WHERE v.data_venda BETWEEN :dataInicio AND :dataFim ");
         
         if (times != null && !times.isEmpty()) {
@@ -93,8 +95,8 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
             sql.append("AND v.vendedor IN (:vendedores) ");
         }
         if (grupos != null && !grupos.isEmpty()) {
-            sql.append("AND (item->>'grupo' IN (:grupos) OR ");
-            sql.append("(COALESCE(item->>'grupo', '') = '' AND 'Não Especificado' IN (:grupos))) ");
+            sql.append("AND (p.grupo IN (:grupos) OR ");
+            sql.append("(COALESCE(p.grupo, '') = '' AND 'Não Especificado' IN (:grupos))) ");
         }
         if (produtos != null && !produtos.isEmpty()) {
             sql.append("AND item->>'nomeProduto' IN (:produtos) ");
@@ -138,6 +140,7 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
         // Se filtrar grupos ou produtos, precisa do CROSS JOIN
         if ((grupos != null && !grupos.isEmpty()) || (produtos != null && !produtos.isEmpty())) {
             sql.append("CROSS JOIN jsonb_array_elements(COALESCE(v.produto, CAST('[]' AS jsonb))) AS item ");
+            sql.append("LEFT JOIN jaragua_produtos p ON item->>'nomeProduto' = p.descricao ");
         }
         
         sql.append("WHERE v.data_venda BETWEEN :dataInicio AND :dataFim ");
@@ -149,8 +152,8 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
             sql.append("AND v.vendedor IN (:vendedores) ");
         }
         if (grupos != null && !grupos.isEmpty()) {
-            sql.append("AND (item->>'grupo' IN (:grupos) OR ");
-            sql.append("(COALESCE(item->>'grupo', '') = '' AND 'Não Especificado' IN (:grupos))) ");
+            sql.append("AND (p.grupo IN (:grupos) OR ");
+            sql.append("(COALESCE(p.grupo, '') = '' AND 'Não Especificado' IN (:grupos))) ");
         }
         if (produtos != null && !produtos.isEmpty()) {
             sql.append("AND item->>'nomeProduto' IN (:produtos) ");
@@ -183,6 +186,7 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
         sql.append("CAST(COALESCE(NULLIF(item->>'quantidade', ''), '0') AS INTEGER)) as total ");
         sql.append("FROM vendas_jaragua v ");
         sql.append("CROSS JOIN jsonb_array_elements(COALESCE(v.produto, CAST('[]' AS jsonb))) AS item ");
+        sql.append("LEFT JOIN jaragua_produtos p ON item->>'nomeProduto' = p.descricao ");
         sql.append("WHERE v.data_venda BETWEEN :dataInicio AND :dataFim ");
         
         if (times != null && !times.isEmpty()) {
@@ -192,8 +196,8 @@ public class VendaRepositoryImpl implements VendaRepositoryCustom {
             sql.append("AND v.vendedor IN (:vendedores) ");
         }
         if (grupos != null && !grupos.isEmpty()) {
-            sql.append("AND (item->>'grupo' IN (:grupos) OR ");
-            sql.append("(COALESCE(item->>'grupo', '') = '' AND 'Não Especificado' IN (:grupos))) ");
+            sql.append("AND (p.grupo IN (:grupos) OR ");
+            sql.append("(COALESCE(p.grupo, '') = '' AND 'Não Especificado' IN (:grupos))) ");
         }
         if (produtos != null && !produtos.isEmpty()) {
             sql.append("AND item->>'nomeProduto' IN (:produtos) ");
