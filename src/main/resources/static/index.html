@@ -759,7 +759,7 @@
                          <label style="font-size:0.8em">Custo Mat. (Un)</label>
                          <input type="number" id="itemCusto" step="0.01" style="padding: 5px;">
                     </div>
-                    <button class="btn" onclick="addItemToCart()" style="height: 36px; margin-bottom: 2px; white-space: nowrap;">Adicionar</button>
+                    <button class="btn" id="btnAddCartItem" onclick="addItemToCart()" style="height: 36px; margin-bottom: 2px; white-space: nowrap;">Adicionar</button>
                 </div>
 
                 <div style="overflow-x: auto;">
@@ -1080,6 +1080,8 @@
             document.getElementById('modalVendaTitle').innerText = 'Nova Venda';
             document.getElementById('saveStatus').innerText = '';
             document.getElementById('vendaId').value = ''; // Reset ID
+            editingCartIndex = -1;
+            if(document.getElementById('btnAddCartItem')) document.getElementById('btnAddCartItem').innerText = 'Adicionar';
             
             // Show Save, Hide Edit, Hide Delete
             document.getElementById('btnSalvarVenda').style.display = 'block';
@@ -1734,6 +1736,7 @@
         }
 
         let currentCart = [];
+        let editingCartIndex = -1; // Track which item is being edited
 
         async function confirmarExclusaoVenda() {
             const id = document.getElementById('vendaId').value;
@@ -1837,13 +1840,23 @@
 
             if(qtd <= 0) { alert('Quantidade inválida'); return; }
 
-            currentCart.push({
+            const newItem = {
                 produtoId: pId,
                 nomeProduto: pNome,
                 quantidade: qtd,
                 valorUnitarioVenda: vv,
                 valorUnitarioCusto: vc
-            });
+            };
+
+            if (editingCartIndex >= 0) {
+                // Update
+                currentCart[editingCartIndex] = newItem;
+                editingCartIndex = -1;
+                document.getElementById('btnAddCartItem').innerText = "Adicionar";
+            } else {
+                // Insert
+                currentCart.push(newItem);
+            }
 
             // Reset inputs
             pSelect.value = '';
@@ -1854,7 +1867,47 @@
             updateCartTable();
         }
 
+        function editCartItem(index) {
+            const item = currentCart[index];
+            if (!item) return;
+
+            editingCartIndex = index;
+
+            // Restore Product Selection (Complex because of Group Filter)
+            const prod = _ALL_PRODUTOS.find(p => p.id == item.produtoId) || _ALL_PRODUTOS.find(p => p.descricao === item.nomeProduto);
+            
+            const grupoSelect = document.getElementById('itemGrupoSelect');
+            if (prod) {
+                grupoSelect.value = prod.grupo || '';
+                filterProdutosByGrupo(); // Refresh product dropdown based on group
+                document.getElementById('itemProdutoSelect').value = prod.id;
+            } else {
+                // Fallback: Show all or keep current filter
+                grupoSelect.value = '';
+                filterProdutosByGrupo();
+                // Might fail to select if ID is not in list
+            }
+
+            document.getElementById('itemQtd').value = item.quantidade;
+            document.getElementById('itemValorVenda').value = item.valorUnitarioVenda;
+            document.getElementById('itemCusto').value = item.valorUnitarioCusto;
+            
+            document.getElementById('btnAddCartItem').innerText = "Atualizar Tabela";
+        }
+
         function removeItemFromCart(index) {
+            if (index === editingCartIndex) {
+                 editingCartIndex = -1;
+                 document.getElementById('btnAddCartItem').innerText = "Adicionar";
+                 // Clear inputs
+                 document.getElementById('itemProdutoSelect').value = '';
+                 document.getElementById('itemQtd').value = 1;
+                 document.getElementById('itemValorVenda').value = '';
+                 document.getElementById('itemCusto').value = '';
+            } else if (index < editingCartIndex) {
+                editingCartIndex--;
+            }
+
             currentCart.splice(index, 1);
             updateCartTable();
         }
@@ -1881,7 +1934,10 @@
                     <td>${formatMoney(item.valorUnitarioVenda)}</td>
                     <td>${formatMoney(item.valorUnitarioCusto)}</td>
                     <td>${formatMoney(subTotalV)}</td>
-                    <td><button onclick="removeItemFromCart(${idx})" style="background:none; border:none; color:red; cursor:pointer;">&times;</button></td>
+                    <td>
+                        <button onclick="editCartItem(${idx})" style="background:none; border:none; color:var(--microsoft-blue); cursor:pointer; margin-right:5px; font-size:1.2em;">✎</button>
+                        <button onclick="removeItemFromCart(${idx})" style="background:none; border:none; color:red; cursor:pointer; font-size:1.2em;">&times;</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
