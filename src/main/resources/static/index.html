@@ -2755,6 +2755,7 @@
 
             let finalLabels = pageData.map(d => d.vendedor);
             let finalValues = pageData.map(d => d.total);
+            let finalPrevious = pageData.map(d => d.previousTotal || 0);
 
             const ctx = document.getElementById('chartVendedores').getContext('2d');
             if (chartVendedoresInstance) chartVendedoresInstance.destroy();
@@ -2767,11 +2768,79 @@
                         datasets: [{
                             label: 'Vendas (R$)',
                             data: finalValues,
+                            previousData: finalPrevious,
                             backgroundColor: '#0078d4',
                             borderColor: '#005a9e',
                             borderWidth: 1
                         }]
                     },
+                    plugins: [{
+                        id: 'barLabels',
+                        afterDatasetsDraw(chart, args, options) {
+                            const { ctx, scales: { x } } = chart;
+                            ctx.save();
+                            ctx.textBaseline = 'middle';
+                            
+                            chart.data.datasets.forEach((dataset, i) => {
+                                const meta = chart.getDatasetMeta(i);
+                                meta.data.forEach((bar, index) => {
+                                    const value = dataset.data[index];
+                                    if(value === 0) return;
+                                    
+                                    // 1. Draw Value Label
+                                    const text = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    ctx.font = 'bold 11px "Segoe UI", sans-serif';
+                                    const textWidth = ctx.measureText(text).width;
+                                    const barWidth = bar.x - x.left;
+                                    
+                                    let labelRightEdge = 0;
+
+                                    if (barWidth > textWidth + 20) {
+                                        ctx.fillStyle = '#FFFFFF';
+                                        ctx.textAlign = 'right';
+                                        ctx.fillText(text, bar.x - 8, bar.y);
+                                        labelRightEdge = bar.x; // Label is inside, so rightmost visual element is the bar end
+                                    } else {
+                                        ctx.fillStyle = '#e0e1dd';
+                                        ctx.textAlign = 'left';
+                                        ctx.fillText(text, bar.x + 8, bar.y);
+                                        labelRightEdge = bar.x + 8 + textWidth; // Rightmost is the text end
+                                    }
+
+                                    // 2. Draw Growth Indicator (Outside Right)
+                                    const prevValue = dataset.previousData ? dataset.previousData[index] : 0;
+                                    
+                                    // Calculate diff
+                                    let diffPercent = 0;
+                                    // Avoid division by zero
+                                    if (prevValue > 0) {
+                                        diffPercent = ((value - prevValue) / prevValue) * 100;
+                                    } else if (value > 0 && prevValue === 0) {
+                                        diffPercent = 100; 
+                                    }
+                                    
+                                    // Only show if there is a comparison to be made and it's not just 0 to 0
+                                    if (value > 0 || prevValue > 0) {
+                                        const isPositive = diffPercent >= 0;
+                                        // If diff is 0 or very small, maybe grey? But strictly requesting Up/Down
+                                        // Let's assume > 0 is Up, < 0 is Down.
+                                        
+                                        const arrow = isPositive ? '▲' : '▼';
+                                        const color = isPositive ? '#107c10' : '#e81123'; 
+                                        const pctText = Math.abs(diffPercent).toFixed(1) + '%';
+                                        
+                                        ctx.fillStyle = color;
+                                        ctx.font = 'bold 10px "Segoe UI", sans-serif';
+                                        ctx.textAlign = 'left';
+                                        
+                                        // Draw next to the label (10px padding)
+                                        ctx.fillText(`${arrow} ${pctText}`, labelRightEdge + 10, bar.y);
+                                    }
+                                });
+                            });
+                            ctx.restore();
+                        }
+                    }],
                     options: {
                         indexAxis: 'y',
                         responsive: true,
@@ -2785,15 +2854,15 @@
                              }
                         },
                         scales: {
-                            x: { 
-                                ticks: { color: '#e0e1dd' }, 
-                                grid: { color: 'rgba(255,255,255,0.1)' } 
-                            },
-                            y: { 
-                                ticks: { color: '#e0e1dd' }, 
-                                grid: { display: false }
-                            }
-                        }
+                             x: { 
+                                 ticks: { color: '#e0e1dd' }, 
+                                 grid: { color: 'rgba(255,255,255,0.1)' } 
+                             },
+                             y: { 
+                                 ticks: { color: '#e0e1dd' }, 
+                                 grid: { display: false }
+                             }
+                         }
                     }
                 });
             } else {

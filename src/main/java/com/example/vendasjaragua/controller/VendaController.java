@@ -21,9 +21,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 import java.util.List;
 
@@ -331,7 +333,36 @@ public class VendaController {
         if (grupos != null && grupos.isEmpty()) grupos = null;
         if (produtos != null && produtos.isEmpty()) produtos = null;
 
-        return new ResponseEntity<>(vendaRepository.findVendasPorVendedorDynamic(inicio, fim, times, vendedores, grupos, produtos), HttpStatus.OK);
+        List<java.util.Map<String, Object>> currentPeriod = vendaRepository.findVendasPorVendedorDynamic(inicio, fim, times, vendedores, grupos, produtos);
+        
+        // Calculate previous period
+        long days = ChronoUnit.DAYS.between(inicio, fim);
+        LocalDate prevFim = inicio.minusDays(1);
+        LocalDate prevInicio = prevFim.minusDays(days);
+        
+        List<java.util.Map<String, Object>> previousPeriod = vendaRepository.findVendasPorVendedorDynamic(prevInicio, prevFim, times, vendedores, grupos, produtos);
+        
+        // Map previous totals by Vendor
+        java.util.Map<String, Double> prevTotals = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> row : previousPeriod) {
+            String v = (String) row.get("vendedor");
+            Number total = (Number) row.get("total");
+            if (v != null && total != null) {
+                prevTotals.put(v, total.doubleValue());
+            }
+        }
+        
+        // Merge into current
+        for (java.util.Map<String, Object> row : currentPeriod) {
+            String v = (String) row.get("vendedor");
+            if (prevTotals.containsKey(v)) {
+                row.put("previousTotal", prevTotals.get(v));
+            } else {
+                row.put("previousTotal", 0.0);
+            }
+        }
+
+        return new ResponseEntity<>(currentPeriod, HttpStatus.OK);
     }
 
     @GetMapping("/dashboard/produtos")
