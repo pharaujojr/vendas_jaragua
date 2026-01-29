@@ -10,4 +10,5 @@ public class VendaItem {
     private Integer quantidade;
     private BigDecimal valorUnitarioVenda; // unit price for sale
     private BigDecimal valorUnitarioCusto; // unit cost (material)
+    private String grupo;
 }

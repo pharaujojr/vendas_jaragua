@@ -243,6 +243,8 @@ public class VendaController {
             }
             return new ResponseEntity<>(vendas, HttpStatus.OK);
         } catch (Exception e) {
+            e.printStackTrace();
+            e.printStackTrace();
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
