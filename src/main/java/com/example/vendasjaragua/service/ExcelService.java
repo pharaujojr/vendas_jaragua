@@ -10,8 +10,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.ZoneId;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -388,5 +391,238 @@ public class ExcelService {
             return null;
         }
         return null; // fallback or parse string if needed
+    }
+
+    public byte[] exportVendasToExcel(List<Venda> vendas) {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            
+            // Formato brasileiro para datas
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            
+            // ==================== ABA 1: VENDAS (CONSOLIDADO) ====================
+            Sheet sheetVendas = workbook.createSheet("Vendas");
+            createVendasSheet(sheetVendas, vendas, dateFormatter, workbook);
+            
+            // ==================== ABA 2: PRODUTOS (DETALHADO) ====================
+            Sheet sheetProdutos = workbook.createSheet("Produtos Detalhados");
+            createProdutosSheet(sheetProdutos, vendas, dateFormatter, workbook);
+            
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao gerar arquivo Excel: " + e.getMessage());
+        }
+    }
+    
+    private void createVendasSheet(Sheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, Workbook workbook) {
+        // Criar estilos
+        CellStyle headerStyle = createHeaderStyle(workbook);
+        CellStyle currencyStyle = createCurrencyStyle(workbook);
+        CellStyle normalStyle = createNormalStyle(workbook);
+        
+        // Cabeçalho
+        Row headerRow = sheet.createRow(0);
+        String[] columns = {"CLIENTE", "NF", "OV", "ENTREGA", "TELEFONE", "CIDADE", "ESTADO", 
+                            "VENDEDOR", "DATA", "PLACAS", "INVERSOR", "POTÊNCIA", 
+                            "R$ VENDA", "R$ MATERIAL", "R$ BRUTO", "MARKUP", "TIME"};
+        
+        for (int i = 0; i < columns.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(columns[i]);
+            cell.setCellStyle(headerStyle);
+        }
+        
+        // Dados
+        int rowNum = 1;
+        for (Venda venda : vendas) {
+            Row row = sheet.createRow(rowNum++);
+            
+            createCell(row, 0, venda.getCliente(), normalStyle);
+            createCell(row, 1, venda.getNf(), normalStyle);
+            createCell(row, 2, venda.getOv(), normalStyle);
+            createCell(row, 3, venda.getEntrega(), normalStyle);
+            createCell(row, 4, venda.getTelefone(), normalStyle);
+            createCell(row, 5, venda.getCidade(), normalStyle);
+            createCell(row, 6, venda.getEstado(), normalStyle);
+            createCell(row, 7, venda.getVendedor(), normalStyle);
+            
+            // DATA (formato brasileiro)
+            Cell cell8 = row.createCell(8);
+            if (venda.getData() != null) {
+                cell8.setCellValue(venda.getData().format(dateFormatter));
+            }
+            cell8.setCellStyle(normalStyle);
+            
+            createCell(row, 9, venda.getPlacas(), normalStyle);
+            createCell(row, 10, venda.getInversor(), normalStyle);
+            createCell(row, 11, venda.getPotencia(), normalStyle);
+            
+            createCurrencyCell(row, 12, venda.getValorVenda(), workbook);
+            createCurrencyCell(row, 13, venda.getValorMaterial(), workbook);
+            createCurrencyCell(row, 14, venda.getValorBruto(), workbook);
+            
+            Cell cell15 = row.createCell(15);
+            if (venda.getMarkup() != null) {
+                cell15.setCellValue(venda.getMarkup().doubleValue() + "%");
+            }
+            cell15.setCellStyle(normalStyle);
+            
+            createCell(row, 16, venda.getTime(), normalStyle);
+        }
+        
+        // Ajustar largura das colunas
+        for (int i = 0; i < columns.length; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 512);
+        }
+    }
+    
+    private void createProdutosSheet(Sheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, Workbook workbook) {
+        // Criar estilos
+        CellStyle headerStyle = createHeaderStyle(workbook);
+        CellStyle currencyStyle = createCurrencyStyle(workbook);
+        CellStyle normalStyle = createNormalStyle(workbook);
+        
+        // Cabeçalho
+        Row headerRow = sheet.createRow(0);
+        String[] columns = {"ID VENDA", "CLIENTE", "NF", "OV", "CIDADE", "ESTADO", 
+                            "VENDEDOR", "DATA", "TIME",
+                            "PRODUTO", "GRUPO", "QUANTIDADE", 
+                            "R$ UNITÁRIO VENDA", "R$ UNITÁRIO CUSTO", "R$ TOTAL PRODUTO", "R$ LUCRO PRODUTO"};
+        
+        for (int i = 0; i < columns.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(columns[i]);
+            cell.setCellStyle(headerStyle);
+        }
+        
+        // Dados - uma linha para cada produto
+        int rowNum = 1;
+        for (Venda venda : vendas) {
+            if (venda.getProduto() != null && !venda.getProduto().isEmpty()) {
+                for (VendaItem item : venda.getProduto()) {
+                    Row row = sheet.createRow(rowNum++);
+                    
+                    // Dados da venda
+                    Cell cellId = row.createCell(0);
+                    if (venda.getId() != null) {
+                        cellId.setCellValue(venda.getId());
+                    }
+                    cellId.setCellStyle(normalStyle);
+                    
+                    createCell(row, 1, venda.getCliente(), normalStyle);
+                    createCell(row, 2, venda.getNf(), normalStyle);
+                    createCell(row, 3, venda.getOv(), normalStyle);
+                    createCell(row, 4, venda.getCidade(), normalStyle);
+                    createCell(row, 5, venda.getEstado(), normalStyle);
+                    createCell(row, 6, venda.getVendedor(), normalStyle);
+                    
+                    // DATA (formato brasileiro)
+                    Cell cell7 = row.createCell(7);
+                    if (venda.getData() != null) {
+                        cell7.setCellValue(venda.getData().format(dateFormatter));
+                    }
+                    cell7.setCellStyle(normalStyle);
+                    
+                    createCell(row, 8, venda.getTime(), normalStyle);
+                    
+                    // Dados do produto
+                    createCell(row, 9, item.getNomeProduto(), normalStyle);
+                    createCell(row, 10, item.getGrupo(), normalStyle);
+                    
+                    Cell cellQtd = row.createCell(11);
+                    if (item.getQuantidade() != null) {
+                        cellQtd.setCellValue(item.getQuantidade());
+                    }
+                    cellQtd.setCellStyle(normalStyle);
+                    
+                    createCurrencyCell(row, 12, item.getValorUnitarioVenda(), workbook);
+                    createCurrencyCell(row, 13, item.getValorUnitarioCusto(), workbook);
+                    
+                    // R$ TOTAL PRODUTO = quantidade * valor unitário venda
+                    if (item.getQuantidade() != null && item.getValorUnitarioVenda() != null) {
+                        BigDecimal totalProduto = item.getValorUnitarioVenda()
+                            .multiply(BigDecimal.valueOf(item.getQuantidade()));
+                        createCurrencyCell(row, 14, totalProduto, workbook);
+                    } else {
+                        createCurrencyCell(row, 14, null, workbook);
+                    }
+                    
+                    // R$ LUCRO PRODUTO = (valor venda - valor custo) * quantidade
+                    if (item.getQuantidade() != null && 
+                        item.getValorUnitarioVenda() != null && 
+                        item.getValorUnitarioCusto() != null) {
+                        BigDecimal lucroProduto = item.getValorUnitarioVenda()
+                            .subtract(item.getValorUnitarioCusto())
+                            .multiply(BigDecimal.valueOf(item.getQuantidade()));
+                        createCurrencyCell(row, 15, lucroProduto, workbook);
+                    } else {
+                        createCurrencyCell(row, 15, null, workbook);
+                    }
+                }
+            }
+        }
+        
+        // Ajustar largura das colunas
+        for (int i = 0; i < columns.length; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 512);
+        }
+    }
+    
+    // Métodos auxiliares para criar estilos e células
+    private CellStyle createHeaderStyle(Workbook workbook) {
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerFont.setColor(IndexedColors.WHITE.getIndex());
+        headerStyle.setFont(headerFont);
+        headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        return headerStyle;
+    }
+    
+    private CellStyle createCurrencyStyle(Workbook workbook) {
+        CellStyle currencyStyle = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        currencyStyle.setDataFormat(format.getFormat("R$ #,##0.00"));
+        return currencyStyle;
+    }
+    
+    private CellStyle createNormalStyle(Workbook workbook) {
+        CellStyle normalStyle = workbook.createCellStyle();
+        normalStyle.setBorderBottom(BorderStyle.THIN);
+        normalStyle.setBorderTop(BorderStyle.THIN);
+        normalStyle.setBorderLeft(BorderStyle.THIN);
+        normalStyle.setBorderRight(BorderStyle.THIN);
+        return normalStyle;
+    }
+    
+    private void createCell(Row row, int columnIndex, String value, CellStyle style) {
+        Cell cell = row.createCell(columnIndex);
+        cell.setCellValue(value != null ? value : "");
+        cell.setCellStyle(style);
+    }
+    
+    private void createCurrencyCell(Row row, int columnIndex, BigDecimal value, Workbook workbook) {
+        Cell cell = row.createCell(columnIndex);
+        if (value != null) {
+            cell.setCellValue(value.doubleValue());
+            CellStyle currencyWithBorder = workbook.createCellStyle();
+            currencyWithBorder.cloneStyleFrom(createCurrencyStyle(workbook));
+            currencyWithBorder.setBorderBottom(BorderStyle.THIN);
+            currencyWithBorder.setBorderTop(BorderStyle.THIN);
+            currencyWithBorder.setBorderLeft(BorderStyle.THIN);
+            currencyWithBorder.setBorderRight(BorderStyle.THIN);
+            cell.setCellStyle(currencyWithBorder);
+        } else {
+            CellStyle normalStyle = createNormalStyle(workbook);
+            cell.setCellStyle(normalStyle);
+        }
     }
 }

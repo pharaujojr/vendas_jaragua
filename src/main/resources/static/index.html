@@ -597,6 +597,12 @@
                         </div>
                     </div>
                     <button class="btn btn-secondary" onclick="clearDashFilters()" style="margin-bottom: 2px;">Limpar</button>
+                    <button class="btn" onclick="exportToExcel()" style="margin-bottom: 2px; background-color: #1D6F42; display: flex; align-items: center; gap: 5px;" title="Exportar para Excel">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 0h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1zm7 3v2h2V3h-2zm0 3v2h2V6h-2zm0 3v2h2V9h-2zm-3-6v2h2V3H7zm0 3v2h2V6H7zm0 3v2h2V9H7zm-3-6v2h2V3H4zm0 3v2h2V6H4zm0 3v2h2V9H4z"/>
+                        </svg>
+                        Excel
+                    </button>
                     <div style="margin-left: auto; display: flex; gap: 30px; text-align: right;">
                         <div>
                             <small style="color: var(--accent); display: block;">TICKET MÉDIO</small>
@@ -2503,6 +2509,50 @@
             });
             
             loadDashboards();
+        }
+
+        async function exportToExcel() {
+            try {
+                const startDate = document.getElementById('dashDataInicio').value;
+                const endDate = document.getElementById('dashDataFim').value;
+                
+                // Construir a URL com os filtros de data
+                let url = '/api/vendas/export';
+                const params = new URLSearchParams();
+                
+                if (startDate) params.append('startDate', startDate);
+                if (endDate) params.append('endDate', endDate);
+                
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+                
+                // Fazer o download do arquivo
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Erro ao exportar dados');
+                }
+                
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                
+                // Nome do arquivo com data e hora
+                const now = new Date();
+                const filename = `vendas_${now.getDate().toString().padStart(2, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getFullYear()}_${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}-${now.getSeconds().toString().padStart(2, '0')}.xlsx`;
+                a.download = filename;
+                
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+                
+                console.log('Exportação concluída com sucesso!');
+            } catch (error) {
+                console.error('Erro ao exportar:', error);
+                alert('Erro ao exportar dados para Excel. Por favor, tente novamente.');
+            }
         }
 
         function toggleMs(id) {

@@ -12,6 +12,7 @@ import com.example.vendasjaragua.service.ExcelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Page;
@@ -22,11 +23,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import org.springframework.format.annotation.DateTimeFormat;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-
 import java.util.List;
 
 @RestController
@@ -463,6 +459,40 @@ public class VendaController {
         stats.put("ticketMedio", ticketMedio);
         
         return new ResponseEntity<>(stats, HttpStatus.OK);
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportVendas(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        try {
+            List<Venda> vendas;
+            
+            if (startDate != null && endDate != null) {
+                // Buscar vendas com filtro de data, ordenadas por data decrescente
+                vendas = vendaRepository.findByDataBetween(startDate, endDate, 
+                    PageRequest.of(0, Integer.MAX_VALUE, Sort.by("data").descending())).getContent();
+            } else {
+                // Buscar todas as vendas ordenadas por data decrescente
+                vendas = vendaRepository.findAll(
+                    PageRequest.of(0, Integer.MAX_VALUE, Sort.by("data").descending())).getContent();
+            }
+            
+            byte[] excelBytes = excelService.exportVendasToExcel(vendas);
+            
+            String filename = "vendas_" + java.time.LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy_HH-mm-ss")) + ".xlsx";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+            headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            
+            return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
 
