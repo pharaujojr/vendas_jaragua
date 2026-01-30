@@ -5,6 +5,16 @@ import com.example.vendasjaragua.repository.VendaRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFTable;
+import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellReference;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTable;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTableColumns;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTableColumn;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTableStyleInfo;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTAutoFilter;
+import java.math.BigInteger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -394,17 +404,17 @@ public class ExcelService {
     }
 
     public byte[] exportVendasToExcel(List<Venda> vendas) {
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             
             // Formato brasileiro para datas
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             
             // ==================== ABA 1: VENDAS (CONSOLIDADO) ====================
-            Sheet sheetVendas = workbook.createSheet("Vendas");
+            XSSFSheet sheetVendas = workbook.createSheet("Vendas");
             createVendasSheet(sheetVendas, vendas, dateFormatter, workbook);
             
             // ==================== ABA 2: PRODUTOS (DETALHADO) ====================
-            Sheet sheetProdutos = workbook.createSheet("Produtos Detalhados");
+            XSSFSheet sheetProdutos = workbook.createSheet("Produtos Detalhados");
             createProdutosSheet(sheetProdutos, vendas, dateFormatter, workbook);
             
             workbook.write(out);
@@ -414,11 +424,18 @@ public class ExcelService {
         }
     }
     
-    private void createVendasSheet(Sheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, Workbook workbook) {
+    private void createVendasSheet(XSSFSheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, XSSFWorkbook workbook) {
         // Criar estilos
         CellStyle headerStyle = createHeaderStyle(workbook);
         CellStyle currencyStyle = createCurrencyStyle(workbook);
         CellStyle normalStyle = createNormalStyle(workbook);
+        // criar um estilo de moeda com borda reutilizável para evitar estouro de estilos
+        CellStyle currencyWithBorder = workbook.createCellStyle();
+        currencyWithBorder.cloneStyleFrom(currencyStyle);
+        currencyWithBorder.setBorderBottom(BorderStyle.THIN);
+        currencyWithBorder.setBorderTop(BorderStyle.THIN);
+        currencyWithBorder.setBorderLeft(BorderStyle.THIN);
+        currencyWithBorder.setBorderRight(BorderStyle.THIN);
         
         // Cabeçalho
         Row headerRow = sheet.createRow(0);
@@ -457,9 +474,9 @@ public class ExcelService {
             createCell(row, 10, venda.getInversor(), normalStyle);
             createCell(row, 11, venda.getPotencia(), normalStyle);
             
-            createCurrencyCell(row, 12, venda.getValorVenda(), workbook);
-            createCurrencyCell(row, 13, venda.getValorMaterial(), workbook);
-            createCurrencyCell(row, 14, venda.getValorBruto(), workbook);
+            createCurrencyCell(row, 12, venda.getValorVenda(), currencyWithBorder, normalStyle);
+            createCurrencyCell(row, 13, venda.getValorMaterial(), currencyWithBorder, normalStyle);
+            createCurrencyCell(row, 14, venda.getValorBruto(), currencyWithBorder, normalStyle);
             
             Cell cell15 = row.createCell(15);
             if (venda.getMarkup() != null) {
@@ -475,13 +492,24 @@ public class ExcelService {
             sheet.autoSizeColumn(i);
             sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 512);
         }
+
+        // Criar tabela (ListObject) nomeada
+        int lastRow = Math.max(1, sheet.getLastRowNum());
+        createExcelTable(workbook, sheet, 0, lastRow, columns.length - 1, "tabela_vendas", "tabela_vendas", columns);
     }
     
-    private void createProdutosSheet(Sheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, Workbook workbook) {
+    private void createProdutosSheet(XSSFSheet sheet, List<Venda> vendas, DateTimeFormatter dateFormatter, XSSFWorkbook workbook) {
         // Criar estilos
         CellStyle headerStyle = createHeaderStyle(workbook);
         CellStyle currencyStyle = createCurrencyStyle(workbook);
         CellStyle normalStyle = createNormalStyle(workbook);
+        // estilo de moeda com borda reutilizável
+        CellStyle currencyWithBorder = workbook.createCellStyle();
+        currencyWithBorder.cloneStyleFrom(currencyStyle);
+        currencyWithBorder.setBorderBottom(BorderStyle.THIN);
+        currencyWithBorder.setBorderTop(BorderStyle.THIN);
+        currencyWithBorder.setBorderLeft(BorderStyle.THIN);
+        currencyWithBorder.setBorderRight(BorderStyle.THIN);
         
         // Cabeçalho
         Row headerRow = sheet.createRow(0);
@@ -536,16 +564,16 @@ public class ExcelService {
                     }
                     cellQtd.setCellStyle(normalStyle);
                     
-                    createCurrencyCell(row, 12, item.getValorUnitarioVenda(), workbook);
-                    createCurrencyCell(row, 13, item.getValorUnitarioCusto(), workbook);
+                    createCurrencyCell(row, 12, item.getValorUnitarioVenda(), currencyWithBorder, normalStyle);
+                    createCurrencyCell(row, 13, item.getValorUnitarioCusto(), currencyWithBorder, normalStyle);
                     
                     // R$ TOTAL PRODUTO = quantidade * valor unitário venda
                     if (item.getQuantidade() != null && item.getValorUnitarioVenda() != null) {
                         BigDecimal totalProduto = item.getValorUnitarioVenda()
                             .multiply(BigDecimal.valueOf(item.getQuantidade()));
-                        createCurrencyCell(row, 14, totalProduto, workbook);
+                        createCurrencyCell(row, 14, totalProduto, currencyWithBorder, normalStyle);
                     } else {
-                        createCurrencyCell(row, 14, null, workbook);
+                        createCurrencyCell(row, 14, null, currencyWithBorder, normalStyle);
                     }
                     
                     // R$ LUCRO PRODUTO = (valor venda - valor custo) * quantidade
@@ -555,9 +583,9 @@ public class ExcelService {
                         BigDecimal lucroProduto = item.getValorUnitarioVenda()
                             .subtract(item.getValorUnitarioCusto())
                             .multiply(BigDecimal.valueOf(item.getQuantidade()));
-                        createCurrencyCell(row, 15, lucroProduto, workbook);
+                        createCurrencyCell(row, 15, lucroProduto, currencyWithBorder, normalStyle);
                     } else {
-                        createCurrencyCell(row, 15, null, workbook);
+                        createCurrencyCell(row, 15, null, currencyWithBorder, normalStyle);
                     }
                 }
             }
@@ -567,6 +595,63 @@ public class ExcelService {
         for (int i = 0; i < columns.length; i++) {
             sheet.autoSizeColumn(i);
             sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 512);
+        }
+
+        // Criar tabela (ListObject) nomeada
+        int lastRow = Math.max(1, sheet.getLastRowNum());
+        createExcelTable(workbook, sheet, 0, lastRow, columns.length - 1, "tabela_produtos", "tabela_produtos", columns);
+    }
+
+    private void createExcelTable(XSSFWorkbook workbook, XSSFSheet sheet, int headerRow, int lastRow, int lastCol, String name, String displayName, String[] columnNames) {
+        try {
+            // Área da tabela
+            CellReference firstCell = new CellReference(headerRow, 0);
+            CellReference lastCell = new CellReference(lastRow, lastCol);
+            AreaReference areaRef = workbook.getCreationHelper().createAreaReference(firstCell, lastCell);
+
+            XSSFTable table = sheet.createTable(areaRef);
+            table.setName(name);
+            table.setDisplayName(displayName);
+
+            CTTable ctTable = table.getCTTable();
+            ctTable.setId(System.currentTimeMillis() % 1000000L);
+            ctTable.setName(name);
+            ctTable.setDisplayName(displayName);
+            ctTable.setRef(areaRef.formatAsString());
+
+            // Ativar filtros padrão do Excel para a área da tabela
+            CTAutoFilter autoFilter = ctTable.isSetAutoFilter() ? ctTable.getAutoFilter() : ctTable.addNewAutoFilter();
+            autoFilter.setRef(areaRef.formatAsString());
+
+            // Colunas: reutilizar elemento existente se houver (para evitar duplicação)
+            CTTableColumns cols = ctTable.getTableColumns();
+            if (cols == null) {
+                cols = ctTable.addNewTableColumns();
+            }
+            cols.setCount(columnNames.length);
+
+            // Garantir que exista array de tableColumn com tamanho suficiente
+            int existing = cols.sizeOfTableColumnArray();
+            if (existing < columnNames.length) {
+                for (int i = existing; i < columnNames.length; i++) {
+                    cols.addNewTableColumn();
+                }
+            }
+
+            // Preencher/atualizar nomes e ids das colunas
+            for (int i = 0; i < columnNames.length; i++) {
+                CTTableColumn col = cols.getTableColumnArray(i);
+                col.setId(i + 1);
+                col.setName(columnNames[i]);
+            }
+
+            // Estilo da tabela
+            CTTableStyleInfo styleInfo = ctTable.addNewTableStyleInfo();
+            styleInfo.setName("TableStyleMedium9");
+            styleInfo.setShowColumnStripes(false);
+            styleInfo.setShowRowStripes(true);
+        } catch (Exception e) {
+            logger.warn("Falha ao criar tabela Excel {}: {}", name, e.getMessage());
         }
     }
     
@@ -609,19 +694,12 @@ public class ExcelService {
         cell.setCellStyle(style);
     }
     
-    private void createCurrencyCell(Row row, int columnIndex, BigDecimal value, Workbook workbook) {
+    private void createCurrencyCell(Row row, int columnIndex, BigDecimal value, CellStyle currencyStyle, CellStyle normalStyle) {
         Cell cell = row.createCell(columnIndex);
         if (value != null) {
             cell.setCellValue(value.doubleValue());
-            CellStyle currencyWithBorder = workbook.createCellStyle();
-            currencyWithBorder.cloneStyleFrom(createCurrencyStyle(workbook));
-            currencyWithBorder.setBorderBottom(BorderStyle.THIN);
-            currencyWithBorder.setBorderTop(BorderStyle.THIN);
-            currencyWithBorder.setBorderLeft(BorderStyle.THIN);
-            currencyWithBorder.setBorderRight(BorderStyle.THIN);
-            cell.setCellStyle(currencyWithBorder);
+            cell.setCellStyle(currencyStyle);
         } else {
-            CellStyle normalStyle = createNormalStyle(workbook);
             cell.setCellStyle(normalStyle);
         }
     }
