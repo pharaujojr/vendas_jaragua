@@ -52,6 +52,10 @@ public class SecurityConfig {
             .rememberMe(remember -> remember
                 .key("AppVendasJaraguaUniqueKey123")
                 .tokenValiditySeconds(86400 * 30) // 30 days
+            )
+            .sessionManagement(session -> session
+                .maximumSessions(100) // Permite múltiplos logins simultâneos
+                .maxSessionsPreventsLogin(false)
             );
 
         return http.build();
@@ -76,15 +80,15 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Initialize default user if not exists
+    // Initialize or Update default user
     @Bean
     public CommandLineRunner initUser(UsuarioRepository repository, PasswordEncoder encoder) {
         return args -> {
-            if (repository.findById("solturi").isEmpty()) {
-                Usuario user = new Usuario("solturi", encoder.encode("Solturi2025."), "ADMIN");
-                repository.save(user);
-                System.out.println("Default user 'solturi' created.");
-            }
+            // Sempre atualiza a senha para garantir que o hash esteja correto,
+            // corrigindo casos onde o usuário foi criado manualmente com hash inválido no banco.
+            Usuario user = new Usuario("solturi", encoder.encode("Solturi2025."), "ADMIN");
+            repository.save(user);
+            System.out.println("Usuário 'solturi' atualizado/criado com sucesso.");
         };
     }
 }
