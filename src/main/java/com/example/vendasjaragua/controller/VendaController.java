@@ -4,10 +4,12 @@ import com.example.vendasjaragua.model.Venda;
 import com.example.vendasjaragua.model.Time;
 import com.example.vendasjaragua.model.Vendedor;
 import com.example.vendasjaragua.model.Produto;
+import com.example.vendasjaragua.model.Meta;
 import com.example.vendasjaragua.repository.TimeRepository;
 import com.example.vendasjaragua.repository.VendedorRepository;
 import com.example.vendasjaragua.repository.VendaRepository;
 import com.example.vendasjaragua.repository.ProdutoRepository;
+import com.example.vendasjaragua.repository.MetaRepository;
 import com.example.vendasjaragua.service.ExcelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,6 +38,42 @@ public class VendaController {
     private final TimeRepository timeRepository;
     private final VendedorRepository vendedorRepository;
     private final ProdutoRepository produtoRepository;
+    private final MetaRepository metaRepository;
+
+    @GetMapping("/metas")
+    public ResponseEntity<List<Meta>> getMetas(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate month) {
+        if (month == null) {
+            month = LocalDate.now().withDayOfMonth(1);
+        } else {
+            month = month.withDayOfMonth(1);
+        }
+        return new ResponseEntity<>(metaRepository.findByReferencia(month), HttpStatus.OK);
+    }
+
+    @PostMapping("/metas")
+    public ResponseEntity<Meta> saveMeta(@RequestBody Meta meta) {
+        try {
+            meta.setReferencia(meta.getReferencia().withDayOfMonth(1));
+
+            java.util.Optional<Meta> existing;
+            if (meta.getTipo() == Meta.TipoMeta.GLOBAL) {
+                existing = metaRepository.findByReferenciaAndTipo(meta.getReferencia(), meta.getTipo());
+            } else {
+                existing = metaRepository.findByReferenciaAndTipoAndTimeId(meta.getReferencia(), meta.getTipo(), meta.getTime().getId());
+            }
+
+            if (existing.isPresent()) {
+                Meta toUpdate = existing.get();
+                toUpdate.setValor(meta.getValor());
+                return new ResponseEntity<>(metaRepository.save(toUpdate), HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(metaRepository.save(meta), HttpStatus.CREATED);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     @PostMapping
     public ResponseEntity<Venda> createVenda(@RequestBody Venda venda) {
@@ -113,6 +151,7 @@ public class VendaController {
                 .map(existingTime -> {
                     existingTime.setNome(time.getNome());
                     existingTime.setLider(time.getLider());
+                    existingTime.setMeta(time.getMeta());
                     return new ResponseEntity<>(timeRepository.save(existingTime), HttpStatus.OK);
                 })
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));

@@ -626,7 +626,11 @@
             <div class="cadastros-grid">
                 <div class="cadastro-panel">
                     <div class="cadastro-header">
-                        <h3 style="margin:0">Evolução Mensal de Vendas</h3>
+                        <h3 style="margin:0">Evolução / Meta Global</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                             <button class="btn" style="padding: 2px 8px; font-size: 1.5rem; background: transparent; border: none; cursor: pointer; color: var(--text-light);" onclick="openMetasModal()" title="Configurar Metas">⚙</button>
+                             <button class="btn btn-primary" style="padding: 2px 15px; font-size: 1.5em; font-weight: bold; height: 40px; line-height: 1;" onclick="toggleMensalChart()" id="btnToggleMensalChart" title="Alternar visualização">📈</button>
+                        </div>
                     </div>
 
                     <div style="height: 450px; position: relative;">
@@ -660,9 +664,18 @@
                     </div>
                 </div>
                 <div class="cadastro-panel">
-                    <h3 style="margin:0 0 15px 0;">Vendas por Time</h3>
-                    <div style="height: 350px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin:0;">Vendas por Time</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="btn" style="padding: 2px 8px; font-size: 1.5rem; background: transparent; border: none; cursor: pointer; color: var(--text-light);" onclick="openMetasModal()" title="Configurar Metas">⚙</button>
+                            <button class="btn btn-primary" style="padding: 2px 15px; font-size: 1.5em; font-weight: bold; height: 40px; line-height: 1;" onclick="toggleTimeChart()" id="btnToggleTimeChart" title="Alternar visualização">⇄</button>
+                        </div>
+                    </div>
+                    <div style="height: 500px; position: relative;" id="containerTimesPie">
                         <canvas id="chartTimesPie"></canvas>
+                    </div>
+                    <div style="height: 500px; position: relative; display: none; overflow-y: auto;" id="containerTimesGauges">
+                        <div id="gaugesGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;"></div>
                     </div>
                 </div>
             </div>
@@ -1017,6 +1030,30 @@
             <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn btn-secondary" onclick="closeProdutoModal()">Cancelar</button>
                 <button class="btn" onclick="saveProdutoForm()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIG METAS -->
+    <div class="modal-overlay" id="metasModal">
+        <div class="modal-content" style="max-width: 600px; width: 95%;">
+            <div class="modal-header">
+                <h2 style="margin:0; font-weight: 300;">Configurar Metas</h2>
+                <button class="modal-close" onclick="closeMetasModal()">&times;</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                    <p style="font-size: 0.9em; color: #a0a0a0; margin: 0;">Defina as metas para o mês selecionado:</p>
+                    <input type="month" id="metaMesReferencia" style="padding: 5px;" onchange="loadMetasForm()">
+                </div>
+                
+                <div id="metasContainer" style="max-height: 400px; overflow-y: auto;">
+                    <div style="padding: 20px; text-align:center;">Carregando...</div>
+                </div>
+                <div style="margin-top: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+                     <button class="btn" style="background-color: transparent; border: 1px solid #777;" onclick="closeMetasModal()">Cancelar</button>
+                     <button class="btn" onclick="saveMetasNovo()">Salvar Alterações</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2471,10 +2508,19 @@
                  options: {
                      responsive: true,
                      maintainAspectRatio: false,
+                     layout: {
+                        padding: 20
+                     },
                      plugins: {
                          legend: { 
                              position: 'right', 
-                             labels: { color: '#e0e1dd', font: { size: 11 } }
+                             labels: { 
+                                     color: '#e0e1dd', 
+                                     font: { 
+                                             size: 13 
+                                     },
+                                     padding: 20 
+                             }
                          },
                          tooltip: { 
                              callbacks: { 
@@ -2734,48 +2780,207 @@
             loadFilteredCharts();
         }
 
+        // --- GLOBAL META LOGIC ---
+        let _GLOBAL_META_MODE = true; 
+        let _GLOBAL_GAUGE_INSTANCE = null;
+        let _MENSAL_DATA_CACHE = [];
+
         function renderChartMensal(data) {
-            const ctx = document.getElementById('chartMensal').getContext('2d');
+            _MENSAL_DATA_CACHE = data;
+            const containerMensal = document.getElementById('chartMensal').parentElement;
+            let containerGauge = document.getElementById('globalGaugeContainer');
             
-            // Convert YYYY-MM to MM/YYYY format (Brazilian)
-            const labels = data.map(item => {
-                const [year, month] = item.mes.split('-');
-                return `${month}/${year}`;
-            });
-            const values = data.map(item => item.total);
+            // Create container if not exists
+            if(!containerGauge) {
+                containerGauge = document.createElement('div');
+                containerGauge.id = 'globalGaugeContainer';
+                containerGauge.style.height = '450px';
+                containerGauge.style.display = 'none';
+                containerMensal.parentElement.appendChild(containerGauge);
+            }
 
-            if (chartMensalInstance) chartMensalInstance.destroy();
+            const btn = document.getElementById('btnToggleMensalChart');
 
-            chartMensalInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total de Vendas (R$)',
-                        data: values,
-                        backgroundColor: 'rgba(0, 120, 212, 0.2)',
-                        borderColor: '#0078d4',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#e0e1dd' } }
+            if(_GLOBAL_META_MODE) {
+                containerMensal.style.display = 'none';
+                containerGauge.style.display = 'block';
+                if(btn) btn.innerHTML = '💹'; // Chart icon
+                renderGlobalGauge();
+            } else {
+                containerMensal.style.display = 'block';
+                containerGauge.style.display = 'none';
+                if(btn) btn.innerHTML = '⚙️'; // Gauge icon ish
+                
+                // Original Line Chart Logic
+                const ctx = document.getElementById('chartMensal').getContext('2d');
+                
+                // Convert YYYY-MM to MM/YYYY format (Brazilian)
+                const labels = data.map(item => {
+                    const [year, month] = item.mes.split('-');
+                    return `${month}/${year}`;
+                });
+                const values = data.map(item => item.total);
+
+                if (chartMensalInstance) chartMensalInstance.destroy();
+
+                chartMensalInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total de Vendas (R$)',
+                            data: values,
+                            backgroundColor: 'rgba(0, 120, 212, 0.2)',
+                            borderColor: '#0078d4',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }]
                     },
-                    scales: {
-                        x: { ticks: { color: '#e0e1dd' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        y: { 
-                            ticks: { color: '#e0e1dd', callback: (val) => 'R$ ' + val }, 
-                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#e0e1dd' } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#e0e1dd' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            y: { 
+                                ticks: { color: '#e0e1dd', callback: (val) => 'R$ ' + val }, 
+                                grid: { color: 'rgba(255,255,255,0.1)' } 
+                            }
                         }
                     }
+                });
+            }
+        }
+
+        function toggleMensalChart() {
+            _GLOBAL_META_MODE = !_GLOBAL_META_MODE;
+            renderChartMensal(_MENSAL_DATA_CACHE);
+        }
+
+        async function renderGlobalGauge() {
+            const container = document.getElementById('globalGaugeContainer');
+            container.innerHTML = 'Carregando Global...';
+
+            const dInicio = document.getElementById('dashDataInicio').value;
+             let mesRef = '';
+            if(dInicio) {
+                const dateObj = new Date(dInicio);
+                const parts = dInicio.split('-');
+                mesRef = `${parts[0]}-${parts[1]}-01`;
+            } else {
+                 const now = new Date();
+                 const mm = String(now.getMonth()+1).padStart(2,'0');
+                 mesRef = `${now.getFullYear()}-${mm}-01`;
+            }
+
+            let metaGlobal = 0;
+            try {
+                const mRes = await fetch(`/api/vendas/metas?month=${mesRef}`);
+                if(mRes.ok) {
+                    const metas = await mRes.json();
+                    const m = metas.find(x => x.tipo === 'GLOBAL');
+                    if(m) metaGlobal = m.valor;
                 }
+            } catch(e) { console.error(e); }
+
+            container.innerHTML = '';
+            if(_GLOBAL_GAUGE_INSTANCE) {
+                _GLOBAL_GAUGE_INSTANCE.destroy();
+                _GLOBAL_GAUGE_INSTANCE = null;
+            }
+
+            // Get total value from Period Stats
+            let totalPeriodo = 0;
+            const periodSpan = document.getElementById('dashTotalPeriodo');
+            if(periodSpan) {
+                // Parse "R$ 1.234,56"
+                const clean = periodSpan.innerText.replace('R$','').replace(/\./g,'').replace(',','.');
+                totalPeriodo = parseFloat(clean) || 0;
+            }
+
+            // Reuse createGauge logic (manually since it's inside renderGauges scope in previous edit, 
+            // but I need to duplicate or expose it. I'll just implement inline here for simplicity)
+            
+            const card = document.createElement('div');
+            // Full height styling
+            card.style.height = '100%';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'center';
+            card.style.alignItems = 'center';
+            card.style.background = 'rgba(255,255,255,0.02)';
+            card.style.borderRadius = '8px';
+
+            const title = document.createElement('h2');
+            title.innerText = 'Meta Global da Unidade';
+            title.style.margin = '0 0 20px 0';
+            title.style.fontWeight = '300';
+            card.appendChild(title);
+
+            const canvasContainer = document.createElement('div');
+            canvasContainer.style.height = '250px';
+            canvasContainer.style.width = '100%'; 
+            canvasContainer.style.maxWidth = '400px';
+            canvasContainer.style.position = 'relative';
+
+            const canvas = document.createElement('canvas');
+            canvasContainer.appendChild(canvas);
+            card.appendChild(canvasContainer);
+
+            // Calculation
+            const currentVal = totalPeriodo;
+            const metaVal = metaGlobal;
+            const pct = metaVal > 0 ? ((currentVal / metaVal) * 100).toFixed(1) : (currentVal > 0 ? 'inf' : 0);
+            const color = pct >= 100 ? '#107c10' : '#e0e1dd';
+
+             const info = document.createElement('div');
+                info.style.fontSize = '1.2em';
+                info.style.marginTop = '20px';
+                info.style.textAlign = 'center';
+                info.innerHTML = `
+                    <div style="color: #aaa; margin-bottom:5px;">Meta Mensal: R$ ${metaVal.toLocaleString('pt-BR')}</div>
+                    <div style="font-size: 1.5em; margin-bottom:5px;">Realizado: R$ ${currentVal.toLocaleString('pt-BR')}</div>
+                    <div style="color: ${color}; font-weight: bold; font-size: 2.5em;">${pct}%</div>
+                `;
+            card.appendChild(info);
+            container.appendChild(card);
+
+            let achieved = currentVal;
+            let remaining = metaVal - currentVal;
+            let gaugeColor = '#0078d4';
+            
+            if (remaining < 0) {
+                remaining = 0; 
+                gaugeColor = '#107c10'; 
+            }
+            if (metaVal === 0) {
+                 achieved = 1; remaining = 0; gaugeColor = '#555';    
+            }
+
+            _GLOBAL_GAUGE_INSTANCE = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Realizado', 'Faltam'],
+                        datasets: [{
+                            data: [achieved, remaining],
+                            backgroundColor: [gaugeColor, 'rgba(255,255,255,0.1)'],
+                            borderWidth: 0,
+                            cutout: '75%',
+                            circumference: 180,
+                            rotation: -90
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    }
             });
         }
+
 
         // Pagination State
         let _ALL_VENDEDORES_DATA = [];
@@ -2983,34 +3188,445 @@
             }
         }
 
+        // --- METAS & GAUGES LOGIC ---
+        let _TIMES_METAS_MODE = true;
+        let _TIMES_DATA_CACHE = [];
+        let _GAUGE_INSTANCES = [];
+
         function renderChartTimesPie(data) {
-            // Data: [ ["TeamName", 1500.0], ... ]
-            const ctx = document.getElementById('chartTimesPie').getContext('2d');
-            if (chartTimesPieInstance) chartTimesPieInstance.destroy();
+            _TIMES_DATA_CACHE = data; // Cache data for toggling
 
-            const labels = data.map(d => d[0] || 'Sem Time');
-            const values = data.map(d => d[1]);
+            const containerPie = document.getElementById('containerTimesPie');
+            const containerGauges = document.getElementById('containerTimesGauges');
+            
+            if (_TIMES_METAS_MODE) {
+                containerPie.style.display = 'none';
+                containerGauges.style.display = 'block';
+                renderGauges(data);
+            } else {
+                containerPie.style.display = 'block';
+                containerGauges.style.display = 'none';
+                
+                // Original Pie Logic
+                const ctx = document.getElementById('chartTimesPie').getContext('2d');
+                if (chartTimesPieInstance) chartTimesPieInstance.destroy();
 
-            // Simple colors
-            const colors = ['#0078d4', '#e81123', '#00bcf2', '#ff8c00', '#2d7d9a', '#b4009e', '#107c10'];
+                const labels = data.map(d => d[0] || 'Sem Time');
+                const values = data.map(d => d[1]);
 
-            chartTimesPieInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors.slice(0, labels.length),
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { color: '#e0e1dd' } }
+                // Simple colors
+                const colors = ['#0078d4', '#e81123', '#00bcf2', '#ff8c00', '#2d7d9a', '#b4009e', '#107c10'];
+
+                chartTimesPieInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors.slice(0, labels.length),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { color: '#e0e1dd' } }
+                        }
                     }
+                });
+            }
+        }
+
+        function toggleTimeChart() {
+            _TIMES_METAS_MODE = !_TIMES_METAS_MODE;
+           renderChartTimesPie(_TIMES_DATA_CACHE);
+        }
+
+        async function renderGauges(salesData) {
+            const container = document.getElementById('gaugesGrid');
+            container.innerHTML = 'Cards carregando...';
+            
+            // Fetch Metas
+            let times = [];
+            try {
+                const response = await fetch('/api/vendas/times');
+                if(response.ok) times = await response.json();
+            } catch(e) { console.error(e); }
+
+            container.innerHTML = '';
+            
+            // Clear old instances
+            _GAUGE_INSTANCES.forEach(inst => inst.destroy());
+            _GAUGE_INSTANCES = [];
+
+            // salesData: [ [TeamName, TotalValue], ... ]
+            // Map Name -> Value
+            const salesMap = {};
+            salesData.forEach(d => {
+                const name = d[0] || 'Sem Time';
+                salesMap[name] = d[1];
+            });
+
+            const allTeamNames = new Set([...times.map(t => t.nome), ...Object.keys(salesMap).filter(k=>k!=='Sem Time')]);
+            
+            allTeamNames.forEach((teamName, index) => {
+                const teamObj = times.find(t => t.nome === teamName);
+                const meta = (teamObj && teamObj.meta) ? teamObj.meta : 0;
+                const total = salesMap[teamName] || 0;
+                
+                // Create Card
+                const card = document.createElement('div');
+                card.style.background = 'rgba(255,255,255,0.05)';
+                card.style.borderRadius = '4px';
+                card.style.padding = '10px';
+                card.style.textAlign = 'center';
+                
+                const title = document.createElement('div');
+                title.innerText = teamName;
+                title.style.fontWeight = 'bold';
+                title.style.marginBottom = '5px';
+                card.appendChild(title);
+                
+                const canvasContainer = document.createElement('div');
+                canvasContainer.style.height = '120px';
+                canvasContainer.style.position = 'relative';
+                
+                const canvas = document.createElement('canvas');
+                canvasContainer.appendChild(canvas);
+                card.appendChild(canvasContainer);
+                
+                // Info Text
+                const info = document.createElement('div');
+                info.style.fontSize = '0.85em';
+                info.style.marginTop = '5px';
+                
+                const pct = meta > 0 ? ((total / meta) * 100).toFixed(1) : (total > 0 ? 'inf' : 0);
+                const color = pct >= 100 ? '#107c10' : '#e0e1dd';
+                
+                info.innerHTML = `
+                    <div style="color: #aaa;">Meta: R$ ${meta.toLocaleString ? meta.toLocaleString('pt-BR') : meta}</div>
+                    <div>Atual: R$ ${total.toLocaleString('pt-BR')}</div>
+                    <div style="color: ${color}; font-weight: bold;">${pct}%</div>
+                `;
+                card.appendChild(info);
+                
+                container.appendChild(card);
+                
+                // Render Gauge
+                let achieved = total;
+                let remaining = meta - total;
+                let gaugeColor = '#0078d4';
+                
+                if (remaining < 0) {
+                    remaining = 0; // Overachieved
+                    gaugeColor = '#107c10'; // Green
                 }
+                
+                if (meta === 0) {
+                    // No meta
+                    achieved = 1; 
+                    remaining = 0;
+                    gaugeColor = '#555';    
+                }
+                
+                const chart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Vendidos', 'Faltam'],
+                        datasets: [{
+                            data: [achieved, remaining],
+                            backgroundColor: [gaugeColor, 'rgba(255,255,255,0.1)'],
+                            borderWidth: 0,
+                            cutout: '70%',
+                            circumference: 180,
+                            rotation: -90
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    }
+                });
+                _GAUGE_INSTANCES.push(chart);
+            });
+        }
+
+        // --- MODAL CONFIG METAS V2 ---
+        function openMetasModal() {
+            document.getElementById('metasModal').classList.add('modal-active');
+            // Init with current month if not set
+            if(!document.getElementById('metaMesReferencia').value) {
+                const now = new Date();
+                const yy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                document.getElementById('metaMesReferencia').value = `${yy}-${mm}`;
+            }
+            loadMetasForm();
+        }
+
+        function closeMetasModal() {
+            document.getElementById('metasModal').classList.remove('modal-active');
+        }
+
+        async function loadMetasForm() {
+            const container = document.getElementById('metasContainer');
+            const mesRef = document.getElementById('metaMesReferencia').value; 
+            container.innerHTML = 'Carregando...';
+            
+            try {
+                // Fetch times and existing metas for the month
+                const [timesRes, metasRes] = await Promise.all([
+                    fetch('/api/vendas/times'),
+                    fetch(`/api/vendas/metas?month=${mesRef}-01`)
+                ]);
+                
+                const times = await timesRes.json();
+                const metas = await metasRes.json();
+                
+                // Find Global Meta
+                const metaGlobalObj = metas.find(m => m.tipo === 'GLOBAL');
+                const metaGlobalVal = metaGlobalObj ? metaGlobalObj.valor : '';
+
+                container.innerHTML = '';
+                
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.minWidth = 'auto'; // Override global table min-width
+                table.style.borderCollapse = 'collapse';
+                table.style.tableLayout = 'fixed'; // FIXED LAYOUT to control widths
+                
+                table.innerHTML = `
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 1px solid #444;">
+                            <th style="padding: 8px; width: 60%; white-space: normal;">Entidade</th>
+                            <th style="padding: 8px; width: 40%; white-space: normal;">Meta (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <td style="padding: 12px 8px; font-weight: bold; white-space: normal; overflow: hidden; text-overflow: ellipsis;">JAGUARÁ UNIDADE (GLOBAL)</td>
+                            <td style="padding: 8px; white-space: normal;">
+                                <input type="number" step="0.01" value="${metaGlobalVal}" 
+                                    class="meta-input-global" 
+                                    style="width: 100%; padding: 5px; border: 1px solid #0078d4; background: #222; color: #fff; border-radius: 4px; font-weight: bold; box-sizing: border-box;">
+                            </td>
+                        </tr>
+                    </tbody>
+                `;
+                
+                const tbody = table.querySelector('tbody');
+                
+                // Separator
+                const trSep = document.createElement('tr');
+                trSep.innerHTML = '<td colspan="2" style="padding: 10px; font-size: 0.8em; color: #aaa; text-transform: uppercase;">Times</td>';
+                tbody.appendChild(trSep);
+
+                times.forEach(t => {
+                    const m = metas.find(x => x.tipo === 'TIME' && x.time && x.time.id === t.id);
+                    const val = m ? m.valor : '';
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding: 8px; white-space: normal; overflow: hidden; text-overflow: ellipsis;">${t.nome}</td>
+                        <td style="padding: 8px; white-space: normal;">
+                            <input type="number" step="0.01" value="${val}" 
+                                data-time-id="${t.id}"
+                                class="meta-input-time" 
+                                style="width: 100%; padding: 5px; border: 1px solid #444; background: #222; color: #fff; border-radius: 4px; box-sizing: border-box;">
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                container.appendChild(table);
+            } catch(e) {
+                container.innerHTML = 'Erro ao carregar dados.';
+                console.error(e);
+            }
+        }
+
+        async function saveMetasNovo() {
+            const mesRef = document.getElementById('metaMesReferencia').value;
+            const dataRef = `${mesRef}-01`;
+            const promises = [];
+            
+            // Save Global
+            const globalInput = document.querySelector('.meta-input-global');
+            if(globalInput) {
+                const val = globalInput.value ? parseFloat(globalInput.value) : 0;
+                promises.push(fetch('/api/vendas/metas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        referencia: dataRef,
+                        tipo: 'GLOBAL',
+                        valor: val
+                    })
+                }));
+            }
+            
+            // Save Times
+            const timeInputs = document.querySelectorAll('.meta-input-time');
+            timeInputs.forEach(input => {
+                const tId = input.getAttribute('data-time-id');
+                const val = input.value ? parseFloat(input.value) : 0;
+                
+                promises.push(fetch('/api/vendas/metas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        referencia: dataRef,
+                        tipo: 'TIME',
+                        time: { id: tId },
+                        valor: val
+                    })
+                }));
+            });
+            
+            try {
+                await Promise.all(promises);
+                closeMetasModal();
+                alert('Metas salvas com sucesso!');
+                // Reload charts if needed
+                loadFilteredCharts();
+            } catch(e) {
+                alert('Erro ao salvar metas.');
+            }
+        }
+
+        async function renderGauges(salesData) {
+            const container = document.getElementById('gaugesGrid');
+            container.innerHTML = 'Cards carregando...';
+            
+            // Get Current Month from Dashboard or defaulting
+            const dInicio = document.getElementById('dashDataInicio').value;
+            let mesRef = '';
+            if(dInicio) {
+                const dateObj = new Date(dInicio);
+                // Adjust for timezone if needed, but input type=date is YYYY-MM-DD
+                // To avoid off-by-one, just parse string
+                const parts = dInicio.split('-');
+                mesRef = `${parts[0]}-${parts[1]}-01`;
+            } else {
+                 const now = new Date();
+                 const mm = String(now.getMonth()+1).padStart(2,'0');
+                 mesRef = `${now.getFullYear()}-${mm}-01`;
+            }
+
+            let times = [];
+            let metas = [];
+            try {
+                const [tRes, mRes] = await Promise.all([
+                     fetch('/api/vendas/times'),
+                     fetch(`/api/vendas/metas?month=${mesRef}`)
+                ]);
+                if(tRes.ok) times = await tRes.json();
+                if(mRes.ok) metas = await mRes.json();
+            } catch(e) { console.error(e); }
+
+            container.innerHTML = '';
+            
+            _GAUGE_INSTANCES.forEach(inst => inst.destroy());
+            _GAUGE_INSTANCES = [];
+
+            // Helper to build gauge
+            const createGauge = (containerDiv, titleVal, currentVal, metaVal, height='120px') => {
+                 const card = document.createElement('div');
+                card.style.background = 'rgba(255,255,255,0.05)';
+                card.style.borderRadius = '4px';
+                card.style.padding = '10px';
+                card.style.textAlign = 'center';
+                if(containerDiv.id === 'globalGaugeContainer') {
+                    card.style.height = '100%';
+                    card.style.display = 'flex';
+                    card.style.flexDirection = 'column';
+                    card.style.justifyContent = 'center';
+                }
+                
+                const title = document.createElement('div');
+                title.innerText = titleVal;
+                title.style.fontWeight = 'bold';
+                title.style.marginBottom = '5px';
+                if(containerDiv.id === 'globalGaugeContainer') title.style.fontSize = '1.2em';
+                card.appendChild(title);
+                
+                const canvasContainer = document.createElement('div');
+                canvasContainer.style.height = height;
+                canvasContainer.style.position = 'relative';
+                
+                const canvas = document.createElement('canvas');
+                canvasContainer.appendChild(canvas);
+                card.appendChild(canvasContainer);
+                
+                // Info Text
+                const pct = metaVal > 0 ? ((currentVal / metaVal) * 100).toFixed(1) : (currentVal > 0 ? 'inf' : 0);
+                const color = pct >= 100 ? '#107c10' : '#e0e1dd';
+                
+                const info = document.createElement('div');
+                info.style.fontSize = '0.85em';
+                info.style.marginTop = '5px';
+                info.innerHTML = `
+                    <div style="color: #aaa;">Meta: R$ ${metaVal.toLocaleString ? metaVal.toLocaleString('pt-BR') : metaVal}</div>
+                    <div style="font-size: ${containerDiv.id==='globalGaugeContainer' ? '1.5em' : '1em'}; margin: 5px 0;">Atual: R$ ${currentVal.toLocaleString('pt-BR')}</div>
+                    <div style="color: ${color}; font-weight: bold; font-size: ${containerDiv.id==='globalGaugeContainer' ? '2em' : '1em'};">${pct}%</div>
+                `;
+                card.appendChild(info);
+                containerDiv.appendChild(card);
+                
+                // Chart
+                let achieved = currentVal;
+                let remaining = metaVal - currentVal;
+                let gaugeColor = '#0078d4';
+                
+                if (remaining < 0) {
+                    remaining = 0; 
+                    gaugeColor = '#107c10'; 
+                }
+                if (metaVal === 0) {
+                    achieved = 1; remaining = 0; gaugeColor = '#555';    
+                }
+                
+                const chart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Vendidos', 'Faltam'],
+                        datasets: [{
+                            data: [achieved, remaining],
+                            backgroundColor: [gaugeColor, 'rgba(255,255,255,0.1)'],
+                            borderWidth: 0,
+                            cutout: '70%',
+                            circumference: 180,
+                            rotation: -90
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    }
+                });
+                if(containerDiv.id !== 'globalGaugeContainer') _GAUGE_INSTANCES.push(chart);
+                else _GLOBAL_GAUGE_INSTANCE = chart;
+            };
+
+            // salesData: [ [TeamName, TotalValue], ... ]
+            const salesMap = {};
+            salesData.forEach(d => {
+                const name = d[0] || 'Sem Time';
+                salesMap[name] = d[1];
+            });
+
+            const allTeamNames = new Set([...times.map(t => t.nome), ...Object.keys(salesMap).filter(k=>k!=='Sem Time')]);
+            
+            allTeamNames.forEach((teamName) => {
+                const teamObj = times.find(t => t.nome === teamName);
+                // Find meta for this team
+                const m = teamObj ? metas.find(x => x.tipo === 'TIME' && x.time && x.time.id === teamObj.id) : null;
+                const metaVal = m ? m.valor : 0;
+                
+                const total = salesMap[teamName] || 0;
+                createGauge(container, teamName, total, metaVal);
             });
         }
     </script>

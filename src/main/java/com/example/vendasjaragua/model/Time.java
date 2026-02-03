@@ -2,6 +2,7 @@ package com.example.vendasjaragua.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
@@ -14,6 +15,7 @@ public class Time {
 
     private String nome;
     private String lider;
+    private BigDecimal meta;
 
     @OneToMany(mappedBy = "time")
     @com.fasterxml.jackson.annotation.JsonIgnore
