@@ -29,7 +29,8 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
                 config.setAllowCredentials(true);
-                config.addAllowedOrigin("*");
+                // Quando allowCredentials é true, não pode ser "*"
+                config.addAllowedOriginPattern("*"); 
                 config.addAllowedHeader("*");
                 config.addAllowedMethod("*");
                 return config;
