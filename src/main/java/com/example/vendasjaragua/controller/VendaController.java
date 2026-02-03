@@ -40,6 +40,7 @@ public class VendaController {
     @PostMapping
     public ResponseEntity<Venda> createVenda(@RequestBody Venda venda) {
         try {
+            populateGrupoProduto(venda);
             Venda novaVenda = vendaRepository.save(venda);
             return new ResponseEntity<>(novaVenda, HttpStatus.CREATED);
         } catch (Exception e) {
@@ -68,6 +69,7 @@ public class VendaController {
         }
         venda.setId(id);
         try {
+            populateGrupoProduto(venda);
             Venda updatedVenda = vendaRepository.save(venda);
             return new ResponseEntity<>(updatedVenda, HttpStatus.OK);
         } catch (Exception e) {
@@ -492,6 +494,23 @@ public class VendaController {
         } catch (Exception e) {
             e.printStackTrace();
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Popula o campo 'grupo' dos VendaItems com base no nome do produto cadastrado.
+     */
+    private void populateGrupoProduto(Venda venda) {
+        if (venda.getProduto() != null && !venda.getProduto().isEmpty()) {
+            for (var item : venda.getProduto()) {
+                if (item.getNomeProduto() != null && !item.getNomeProduto().trim().isEmpty()) {
+                    // Buscar produto por descrição (nome)
+                    produtoRepository.findByDescricao(item.getNomeProduto())
+                        .stream()
+                        .findFirst()
+                        .ifPresent(produto -> item.setGrupo(produto.getGrupo()));
+                }
+            }
         }
     }
 }

@@ -603,16 +603,21 @@
                         </svg>
                         Excel
                     </button>
-                    <div style="margin-left: auto; display: flex; gap: 30px; text-align: right;">
+                    <div style="margin-left: auto; display: flex; gap: 20px; text-align: right;">
                         <div>
-                            <small style="color: var(--accent); display: block;">TICKET MÉDIO</small>
-                            <small style="color: var(--accent); font-size: 0.75em;">(Filtros aplicados)</small>
-                            <span id="dashTicketMedio" style="font-size: 1.8em; font-weight: bold; color: #00bcf2; display: block;">R$ 0,00</span>
+                            <small style="color: var(--accent); display: block; font-size: 0.7em;">QUANTIDADE</small>
+                            <small style="color: var(--accent); font-size: 0.65em;">(Filtros aplicados)</small>
+                            <span id="dashQuantidade" style="font-size: 1.5em; font-weight: bold; color: #00bcf2; display: block;">0</span>
                         </div>
                         <div>
-                            <small style="color: var(--accent); display: block;">TOTAL NO PERÍODO</small>
-                            <small style="color: var(--accent); font-size: 0.75em;">(Filtros aplicados)</small>
-                            <span id="dashTotalPeriodo" style="font-size: 1.8em; font-weight: bold; color: #00bcf2; display: block;">R$ 0,00</span>
+                            <small style="color: var(--accent); display: block; font-size: 0.7em;">TICKET MÉDIO</small>
+                            <small style="color: var(--accent); font-size: 0.65em;">(Filtros aplicados)</small>
+                            <span id="dashTicketMedio" style="font-size: 1.5em; font-weight: bold; color: #00bcf2; display: block;">R$ 0,00</span>
+                        </div>
+                        <div>
+                            <small style="color: var(--accent); display: block; font-size: 0.7em;">TOTAL NO PERÍODO</small>
+                            <small style="color: var(--accent); font-size: 0.65em;">(Filtros aplicados)</small>
+                            <span id="dashTotalPeriodo" style="font-size: 1.5em; font-weight: bold; color: #00bcf2; display: block;">R$ 0,00</span>
                         </div>
                     </div>
                 </div>
@@ -2435,6 +2440,8 @@
                 stats.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             document.getElementById('dashTicketMedio').innerText = 
                 stats.ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('dashQuantidade').innerText = 
+                stats.quantidade.toLocaleString('pt-BR');
         }
 
         function renderChartProdutos(data) {
