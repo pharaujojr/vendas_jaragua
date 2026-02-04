@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,29 +20,32 @@ import org.springframework.web.cors.CorsConfiguration;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/login") // Apenas ignora CSRF no endpoint de login
+            )
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
                 config.setAllowCredentials(true);
-                // Quando allowCredentials é true, não pode ser "*"
                 config.addAllowedOriginPattern("*"); 
                 config.addAllowedHeader("*");
                 config.addAllowedMethod("*");
                 return config;
             }))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/login", "/css/**", "/js/**", "/images/**", "/contorno_pequeno.svg").permitAll()
+                .requestMatchers("/login.html", "/login", "/css/**", "/js/**", "/images/**", "/contorno_pequeno.svg", "/solturi.svg").permitAll()
+                .requestMatchers("/usuarios.html", "/api/usuarios/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login.html")
-                .loginProcessingUrl("/login") // Endpoint handled by Spring Security
+                .loginProcessingUrl("/login")
                 .defaultSuccessUrl("/", true)
                 .failureUrl("/login.html?error=true")
                 .permitAll()
@@ -52,10 +56,10 @@ public class SecurityConfig {
             )
             .rememberMe(remember -> remember
                 .key("AppVendasJaraguaUniqueKey123")
-                .tokenValiditySeconds(86400 * 30) // 30 days
+                .tokenValiditySeconds(86400 * 30)
             )
             .sessionManagement(session -> session
-                .maximumSessions(100) // Permite múltiplos logins simultâneos
+                .maximumSessions(100)
                 .maxSessionsPreventsLogin(false)
             );
 
@@ -81,15 +85,19 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Initialize or Update default user
+    // Initialize or Update default users
     @Bean
     public CommandLineRunner initUser(UsuarioRepository repository, PasswordEncoder encoder) {
         return args -> {
-            // Sempre atualiza a senha para garantir que o hash esteja correto,
-            // corrigindo casos onde o usuário foi criado manualmente com hash inválido no banco.
+            // Usuário solturi
             Usuario user = new Usuario("solturi", encoder.encode("Solturi2025."), "ADMIN");
             repository.save(user);
             System.out.println("Usuário 'solturi' atualizado/criado com sucesso.");
+            
+            // Usuário admin
+            Usuario admin = new Usuario("admin", encoder.encode("@Solturi#2025@"), "ADMIN");
+            repository.save(admin);
+            System.out.println("Usuário 'admin' atualizado/criado com sucesso.");
         };
     }
 }

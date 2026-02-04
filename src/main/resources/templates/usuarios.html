@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Gerenciar Usuários - Vendas Jaraguá</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap');
+
+        :root {
+            --bg-color: #0d1b2a;
+            --card-bg: rgba(27, 38, 59, 0.50);
+            --primary: #415a77;
+            --accent: #778da9;
+            --text-light: #e0e1dd;
+            --microsoft-blue: #0078d4;
+            --microsoft-hover: #106ebe;
+            --border-color: rgba(255,255,255,0.1);
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            padding: 20px; 
+            background-color: var(--bg-color); 
+            background-image: url('contorno_pequeno.svg');
+            background-repeat: no-repeat;
+            background-position: -50vw -50vh;
+            background-size: 100vw;
+            background-attachment: fixed;
+            color: var(--text-light);
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 { 
+            color: #fff; 
+            font-weight: 300; 
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .btn {
+            background-color: var(--microsoft-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn:hover { 
+            background-color: var(--microsoft-hover); 
+        }
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(119, 141, 169, 0.1);
+            color: #fff;
+            border-color: #fff;
+        }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: rgba(0,0,0,0.2);
+            color: #fff;
+            font-family: inherit;
+        }
+
+        select {
+            background-color: #1b263b;
+            color: #fff;
+        }
+        select option {
+            background-color: #1b263b;
+            color: #fff;
+        }
+
+        .table-container {
+            border-radius: 8px;
+            overflow: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background-color: var(--card-bg);
+            max-height: calc(100vh - 300px);
+            border: 1px solid var(--border-color);
+        }
+
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            color: var(--text-light);
+        }
+        
+        thead {
+            background-color: #162032;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+        
+        th { 
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8em;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+        }
+
+        tbody tr:hover { background-color: rgba(255,255,255,0.05); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-active { display: flex; }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            width: 95%; 
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+        }
+        .modal-header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 20px; 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 10px;
+        } 
+        .modal-close { 
+            background: none; 
+            border: none; 
+            color: #fff; 
+            font-size: 24px; 
+            cursor: pointer; 
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            color: var(--accent); 
+            font-size: 0.85em;
+        }
+        .form-group input, 
+        .form-group select { 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        .btn-delete:hover { opacity: 1; }
+
+        .actions-cell {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .message.success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        .message.error {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <h1>Gerenciar Usuários</h1>
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="window.location.href='/'">Voltar</button>
+                <button class="btn btn-secondary" onclick="logout()">Sair</button>
+            </div>
+        </div>
+
+        <div id="messageBox" class="message"></div>
+
+        <div style="margin-bottom: 20px;">
+            <button class="btn" onclick="openCreateModal()">Novo Usuário</button>
+        </div>
+
+        <div class="table-container">
+            <table id="usuariosTable">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="usuariosBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Criar/Editar Usuário -->
+    <div id="usuarioModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Novo Usuário</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="usuarioForm" onsubmit="saveUsuario(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password">
+                    <small style="color: var(--accent); font-size: 0.8em;">
+                        <span id="passwordHint">Obrigatório</span>
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="USER">USER</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let editingUsername = null;
+        let csrfToken = '';
+        let csrfHeader = '';
+
+        function getCsrfToken() {
+            const token = document.querySelector('meta[name="_csrf"]');
+            const header = document.querySelector('meta[name="_csrf_header"]');
+            if (token && header) {
+                csrfToken = token.getAttribute('content');
+                csrfHeader = header.getAttribute('content');
+            }
+        }
+
+        async function loadUsuarios() {
+            try {
+                const response = await fetch('/api/usuarios', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar usuários');
+                }
+                
+                const usuarios = await response.json();
+                const tbody = document.getElementById('usuariosBody');
+                tbody.innerHTML = '';
+                
+                usuarios.forEach(usuario => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${usuario.username}</td>
+                        <td>${usuario.role}</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="openEditModal('${usuario.username}', '${usuario.role}')">Editar</button>
+                            <button class="btn-delete" onclick="deleteUsuario('${usuario.username}')" title="Excluir">×</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                showMessage('Erro ao carregar usuários: ' + error.message, 'error');
+            }
+        }
+
+        function openCreateModal() {
+            editingUsername = null;
+            document.getElementById('modalTitle').textContent = 'Novo Usuário';
+            document.getElementById('usuarioForm').reset();
+            document.getElementById('username').disabled = false;
+            document.getElementById('password').required = true;
+            document.getElementById('passwordHint').textContent = 'Obrigatório';
+            document.getElementById('usuarioModal').classList.add('modal-active');
+        }
+
+        function openEditModal(username, role) {
+            editingUsername = username;
+            document.getElementById('modalTitle').textContent = 'Editar Usuário';
+            document.getElementById('username').value = username;
+            document.getElementById('username').disabled = true;
+            document.getElementById('password').value = '';
+            document.getElementById('password').required = false;
+            document.getElementById('passwordHint').textContent = 'Deixe em branco para não alterar';
+            document.getElementById('role').value = role;
+            document.getElementById('usuarioModal').classList.add('modal-active');
+        }
+
+        function closeModal() {
+            document.getElementById('usuarioModal').classList.remove('modal-active');
+            document.getElementById('usuarioForm').reset();
+            editingUsername = null;
+        }
+
+        async function saveUsuario(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+
+            const data = { username, role };
+            if (password) {
+                data.password = password;
+            }
+
+            try {
+                const url = editingUsername ? `/api/usuarios/${editingUsername}` : '/api/usuarios';
+                const method = editingUsername ? 'PUT' : 'POST';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (csrfToken && csrfHeader) {
+                    headers[csrfHeader] = csrfToken;
+                }
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Erro ao salvar usuário');
+                }
+
+                showMessage(editingUsername ? 'Usuário atualizado com sucesso!' : 'Usuário criado com sucesso!', 'success');
+                closeModal();
+                loadUsuarios();
+            } catch (error) {
+                showMessage('Erro: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteUsuario(username) {
+            if (!confirm(`Tem certeza que deseja excluir o usuário "${username}"?`)) {
+                return;
+            }
+
+            try {
+                const headers = {};
+                if (csrfToken && csrfHeader) {
+                    headers[csrfHeader] = csrfToken;
+                }
+                
+                const response = await fetch(`/api/usuarios/${username}`, {
+                    method: 'DELETE',
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao excluir usuário');
+                }
+
+                showMessage('Usuário excluído com sucesso!', 'success');
+                loadUsuarios();
+            } catch (error) {
+                showMessage('Erro: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'message ' + type;
+            messageBox.style.display = 'block';
+            
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        function logout() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/logout';
+            
+            if (csrfToken && csrfHeader) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = csrfToken ? '_csrf' : csrfHeader;
+                input.value = csrfToken;
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Inicializar
+        getCsrfToken();
+        loadUsuarios();
+    </script>
+</body>
+</html>

@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>Vendas Jaraguá</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -408,7 +410,11 @@
             <div style="display: flex; align-items: center; gap: 15px;">
                 <h1 style="margin: 0;">Controle de Vendas</h1>
             </div>
-            <img src="solturi.svg" alt="Solturi" style="height: 50px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="window.location.href='/usuarios.html'" title="Gerenciar Usuários">Usuários</button>
+                <button class="btn btn-secondary" onclick="logout()" title="Sair do sistema">Sair</button>
+                <img src="solturi.svg" alt="Solturi" style="height: 50px;">
+            </div>
         </div>
 
         <div class="tab-container">
@@ -3628,6 +3634,28 @@
                 const total = salesMap[teamName] || 0;
                 createGauge(container, teamName, total, metaVal);
             });
+        }
+
+        // Função para fazer logout com CSRF
+        function logout() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/logout';
+            
+            // Tentar obter CSRF token da meta tag se existir
+            const csrfMeta = document.querySelector('meta[name="_csrf"]');
+            const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+            
+            if (csrfMeta && csrfMeta.getAttribute('content')) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = '_csrf';
+                input.value = csrfMeta.getAttribute('content');
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>
